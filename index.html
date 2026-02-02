@@ -1,34 +1,1948 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Sistema Turnos Binomio</title>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>REGISTRO DE TURNO EDITORIAL BINOMIO</title>
+    <meta name="description" content="Sistema multi-usuario para registro de turnos mañana y tarde">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- Firebase SDK version modular (v9+) -->
+    <script type="module">
+        // Import the functions you need from the SDKs you need
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        
+        // Your web app's Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDREED85Ig_NLyLEMzLtjRLwrYPZn1Em0g",
+            authDomain: "registro-binomio.firebaseapp.com",
+            projectId: "registro-binomio",
+            storageBucket: "registro-binomio.firebasestorage.app",
+            messagingSenderId: "1005145229027",
+            appId: "1:1005145229027:web:e8f6a5c7027d33ed7727d6",
+            measurementId: "G-TRYZPKQG0J"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        
+        // Hacer disponibles las variables globalmente
+        window.firebaseAuth = auth;
+        window.firebaseDb = db;
+        window.GoogleAuthProvider = GoogleAuthProvider;
+        window.signInWithPopup = signInWithPopup;
+        window.signOut = signOut;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.firebaseDoc = doc;
+        window.firebaseSetDoc = setDoc;
+        window.firebaseGetDoc = getDoc;
+        window.serverTimestamp = serverTimestamp;
+        
+        console.log("✅ Firebase inicializado correctamente");
+    </script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 50px;
-            background: linear-gradient(135deg, #1e3c72, #2a5298);
-            color: white;
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Roboto', sans-serif;
         }
+        
+        body {
+            background: linear-gradient(rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), 
+                        url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxkZWZzPjxwYXR0ZXJuIGlkPSJwYXR0ZXJuIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiIHBhdHRlcm5UcmFuc2Zvcm09InJvdGF0ZSg0NSkiPjxyZWN0IHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0icmdiYSg3NiwxNzUsODAsMC4xKSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3QgZmlsbD0idXJsKCNwYXR0ZXJuKSIgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIvPjwvc3ZnPg==');
+            background-size: cover;
+            background-position: center;
+            color: #fff;
+            min-height: 100vh;
+            padding: 10px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 10px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
         h1 {
-            font-size: 3em;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #fff;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            font-size: 1.1rem;
+            color: #e0e0e0;
+            margin-bottom: 15px;
+        }
+        
+        .main-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
             margin-bottom: 20px;
         }
-        .success {
-            font-size: 2em;
+        
+        .center-panel {
+            width: 100%;
+            max-width: 800px;
+            background: rgba(30, 60, 114, 0.9);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .card {
+            background: rgba(42, 82, 152, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 20px;
+        }
+        
+        .card h2 {
+            color: #fff;
+            margin-bottom: 20px;
+            text-align: center;
+            font-size: 1.5rem;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .turn-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .btn {
+            padding: 15px 10px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            text-align: center;
+            min-height: 60px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-turno-manana {
+            background: linear-gradient(135deg, #FFC107 0%, #FF9800 100%);
+            color: #333;
+        }
+        
+        .btn-turno-tarde {
+            background: linear-gradient(135deg, #2196F3 0%, #1976D2 100%);
+            color: white;
+        }
+        
+        .btn-descargar {
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+            color: white;
+        }
+        
+        .btn-renovar {
+            background: linear-gradient(135deg, #FF5722 0%, #D84315 100%);
+            color: white;
+        }
+        
+        .btn-imprimir {
+            background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);
+            color: white;
+        }
+        
+        .btn-exportar {
+            background: linear-gradient(135deg, #607D8B 0%, #455A64 100%);
+            color: white;
+        }
+        
+        .btn-importar {
+            background: linear-gradient(135deg, #FF9800 0%, #F57C00 100%);
+            color: white;
+        }
+        
+        .btn-cambiar-usuario {
+            background: linear-gradient(135deg, #795548 0%, #5D4037 100%);
+            color: white;
+        }
+        
+        .btn-gestion-usuarios {
+            background: linear-gradient(135deg, #009688 0%, #00796B 100%);
+            color: white;
+        }
+        
+        .btn-login {
+            background: linear-gradient(135deg, #4285F4 0%, #3367D6 100%);
+            color: white;
+        }
+        
+        .btn-logout {
+            background: linear-gradient(135deg, #EA4335 0%, #D23A2E 100%);
+            color: white;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            color: #e0e0e0;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 1rem;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+        
+        .actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-top: 20px;
+        }
+        
+        .status {
+            text-align: center;
+            padding: 15px;
+            margin-top: 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        
+        .status-success {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+        }
+        
+        .status-error {
+            background: rgba(244, 67, 54, 0.3);
+            border: 1px solid #F44336;
+        }
+        
+        .registros {
+            margin-top: 25px;
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            min-width: 700px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        th, td {
+            padding: 12px 10px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.9rem;
+        }
+        
+        th {
+            background: rgba(30, 60, 114, 0.8);
+            color: #fff;
+            font-weight: 600;
+        }
+        
+        tr:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        
+        .icon {
+            font-size: 1.2rem;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            color: #aaa;
+            font-size: 0.9rem;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 10px;
+        }
+        
+        .credits {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            padding: 25px;
+            border-radius: 15px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .modal h3 {
+            color: #fff;
+            margin-bottom: 20px;
+            font-size: 1.4rem;
+            text-align: center;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+        
+        .modal-btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .modal-btn.confirm {
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+            color: white;
+        }
+        
+        .modal-btn.cancel {
+            background: linear-gradient(135deg, #f44336 0%, #D32F2F 100%);
+            color: white;
+        }
+        
+        .user-info {
+            background: rgba(255, 152, 0, 0.2);
+            border: 1px solid rgba(255, 152, 0, 0.5);
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .user-info-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .user-display {
+            font-size: 1.1rem;
+            color: #FFC107;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .usuarios-lista {
+            max-height: 250px;
+            overflow-y: auto;
+            margin: 15px 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        .usuario-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .usuario-item:last-child {
+            border-bottom: none;
+        }
+        
+        .usuario-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn-small {
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-seleccionar {
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+            color: white;
+        }
+        
+        .btn-eliminar {
+            background: linear-gradient(135deg, #f44336 0%, #D32F2F 100%);
+            color: white;
+        }
+        
+        .filtros {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        @media (min-width: 480px) {
+            .filtros {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+        
+        .current-time {
+            text-align: center;
+            margin: 15px 0;
+            font-size: 1rem;
+            color: #FFC107;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 25px;
             color: #4CAF50;
+            font-size: 1.1rem;
+        }
+
+        /* Estilos para la pantalla de carga */
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            color: white;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #4CAF50;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+
+        .loading-text {
+            font-size: 1.5rem;
+            font-weight: 600;
+            text-align: center;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .loading-subtext {
+            font-size: 1rem;
+            color: #e0e0e0;
+            text-align: center;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .welcome-message {
+            background: linear-gradient(135deg, #4CAF50 0%, #388E3C 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 15px 0;
+            text-align: center;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .cloud-status {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        
+        .cloud-connected {
+            background: rgba(76, 175, 80, 0.3);
+            border: 1px solid #4CAF50;
+            color: #4CAF50;
+        }
+        
+        .cloud-disconnected {
+            background: rgba(244, 67, 54, 0.3);
+            border: 1px solid #F44336;
+            color: #F44336;
+        }
+        
+        /* Estilos para Eruda */
+        .eruda-container {
+            z-index: 10000 !important;
         }
     </style>
 </head>
 <body>
-    <h1>✅ SISTEMA DE TURNOS</h1>
-    <p class="success">¡FUNCIONANDO CORRECTAMENTE!</p>
-    <p>Editorial Binomio - Registro de turnos</p>
-    <p>Esta es una prueba de que Netlify sirve archivos estáticos</p>
+    <!-- Pantalla de carga -->
+    <div class="loading-screen" id="loading-screen">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">CARGANDO SISTEMA DE REGISTROS</div>
+        <div class="loading-subtext">MARCK iOS 2.5 - CONECTANDO A LA NUBE</div>
+    </div>
+
+    <div class="container" id="main-system" style="display: none;">
+        <header>
+            <h1>📊 REGISTRO DE TURNO EDITORIAL BINOMIO</h1>
+            <p class="subtitle">Sistema multi-usuario para registro de turnos mañana y tarde</p>
+            
+            <!-- Mensaje de bienvenida -->
+            <div class="welcome-message" id="welcome-message">
+                <strong>🎉 ¡BIENVENIDO/A AL SISTEMA!</strong><br>
+                Sistema de registro de turnos MARCK iOS v2.5 cargado exitosamente
+            </div>
+
+            <div class="user-info">
+                <div class="user-info-content">
+                    <div>
+                        <strong>👤 Usuario Actual:</strong> 
+                        <span id="nombre-display" class="user-display">Cargando...</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button class="btn btn-cambiar-usuario" id="cambiar-usuario">
+                            <span class="icon">🔄</span> Cambiar
+                        </button>
+                        <button class="btn btn-gestion-usuarios" id="gestion-usuarios">
+                            <span class="icon">👥</span> Usuarios
+                        </button>
+                        <button class="btn btn-login" id="login-google" style="display: none;">
+                            <span class="icon">🔐</span> Iniciar Sesión
+                        </button>
+                        <button class="btn btn-logout" id="logout-google" style="display: none;">
+                            <span class="icon">🚪</span> Cerrar Sesión
+                        </button>
+                    </div>
+                </div>
+                <div id="cloud-status" class="cloud-status cloud-disconnected">
+                    <span class="icon">☁️</span> <span id="cloud-status-text">Desconectado</span>
+                </div>
+            </div>
+        </header>
+        
+        <div class="current-time" id="current-time"></div>
+        
+        <div class="main-content">
+            <div class="center-panel">
+                <div class="card">
+                    <h2>⏰ Control de Turnos</h2>
+                    <div class="turn-buttons">
+                        <button class="btn btn-turno-manana" id="entrada-manana">
+                            <span class="icon">☀️</span> Entrada Mañana
+                        </button>
+                        <button class="btn btn-turno-manana" id="salida-manana">
+                            <span class="icon">🚪</span> Salida Mañana
+                        </button>
+                        <button class="btn btn-turno-tarde" id="entrada-tarde">
+                            <span class="icon">🌅</span> Entrada Tarde
+                        </button>
+                        <button class="btn btn-turno-tarde" id="salida-tarde">
+                            <span class="icon">🚪</span> Salida Tarde
+                        </button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="salario-hora">💰 Salario por Hora ($)</label>
+                        <input type="number" id="salario-hora" placeholder="Ej: 8.50" step="0.01" min="0" value="8.50">
+                    </div>
+                    
+                    <div class="actions">
+                        <button class="btn btn-descargar" id="descargar-excel">
+                            <span class="icon">📥</span> Descargar Excel
+                        </button>
+                        <button class="btn btn-renovar" id="renovar-hoja">
+                            <span class="icon">🔄</span> Limpiar Registros
+                        </button>
+                        <button class="btn btn-imprimir" id="imprimir-excel">
+                            <span class="icon">🖨️</span> Imprimir Excel
+                        </button>
+                        <button class="btn btn-exportar" id="exportar-sistema">
+                            <span class="icon">📤</span> Exportar Sistema
+                        </button>
+                        <button class="btn btn-importar" id="importar-sistema">
+                            <span class="icon">📥</span> Importar Sistema
+                        </button>
+                    </div>
+                    
+                    <div id="status-message" class="status" style="display: none;"></div>
+                </div>
+                
+                <div class="card">
+                    <h2>📊 Registros y Reportes</h2>
+                    
+                    <div class="filtros">
+                        <div class="form-group">
+                            <label for="filtro-usuario">👤 Filtrar por Usuario:</label>
+                            <select id="filtro-usuario">
+                                <option value="todos">Todos los usuarios</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="filtro-fecha">📅 Filtrar por Fecha:</label>
+                            <input type="date" id="filtro-fecha">
+                        </div>
+                    </div>
+                    
+                    <div class="registros">
+                        <table id="tabla-registros">
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Fecha</th>
+                                    <th>Hora</th>
+                                    <th>Turno</th>
+                                    <th>Tipo</th>
+                                    <th>Horas</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody id="cuerpo-tabla">
+                                <tr>
+                                    <td colspan="7" class="loading">Cargando registros...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div class="resumen-pago">
+                        <h3 style="margin-top: 20px; color: #fff; text-align: center;">💰 Resumen de Pagos</h3>
+                        <div class="form-group">
+                            <label>Total de Horas Trabajadas:</label>
+                            <input type="text" id="total-horas" readonly style="background: rgba(76, 175, 80, 0.3);">
+                        </div>
+                        <div class="form-group">
+                            <label>Total a Pagar:</label>
+                            <input type="text" id="total-pagar" readonly style="background: rgba(76, 175, 80, 0.3);">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <p>Sistema de Registro de Turnos - Editorial Binomio</p>
+            <div class="credits">
+                <span>👨‍💻 Desarrollado por: Marco Maidana</span>
+                <span>🤖 Asistente IA: Grok</span>
+                <span>☁️ Almacenamiento en la nube: Firebase</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Modal para selección de usuario -->
+    <div class="modal" id="usuario-modal">
+        <div class="modal-content">
+            <h3>👤 Seleccionar Usuario</h3>
+            <p>Elige tu nombre o crea uno nuevo:</p>
+            
+            <div class="usuarios-lista" id="lista-usuarios">
+                <div class="loading">Cargando usuarios...</div>
+            </div>
+            
+            <div class="form-group">
+                <label for="nuevo-usuario">➕ Crear Nuevo Usuario:</label>
+                <input type="text" id="nuevo-usuario" placeholder="Ingresa tu nombre completo">
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="modal-btn confirm" id="crear-usuario">Crear Usuario</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para gestión de usuarios -->
+    <div class="modal" id="gestion-modal">
+        <div class="modal-content">
+            <h3>👥 Gestión de Usuarios</h3>
+            <p>Administra los usuarios del sistema:</p>
+            
+            <div class="usuarios-lista" id="lista-gestion-usuarios">
+                <div class="loading">Cargando usuarios...</div>
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="modal-btn cancel" id="cerrar-gestion">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DEBUG PARA MÓVIL - ERUDA -->
+    <!-- COMENTADO PARA PRODUCCIÓN -->
+    <!--
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
     <script>
-        console.log("✅ Página cargada exitosamente");
-        alert("¡Funciona! Ahora puedes subir tu código completo.");
+        if (/Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            eruda.init();
+        }
+    </script>
+    -->
+
+    <script>
+        // Sistema multi-usuario
+        let usuarios = [];
+        let usuarioActual = null;
+        let registros = [];
+        let ultimaEntrada = {};
+        let usuarioGoogle = null;
+        let datosEnLaNube = false;
+        
+        // Configuración de WhatsApp
+        let configWhatsApp = {
+            numero: '+59163238887',
+            mensaje: `📌 REGISTRO DE ASISTENCIA
+
+👤 Nombre: {empleado}
+📅 Fecha: {fecha}
+⏰ Hora: {hora}
+🟢 Tipo: {tipo} {turno}`
+        };
+        
+        // FUNCIÓN CORREGIDA: Obtener fecha local correcta
+        function obtenerFechaLocal() {
+            const ahora = new Date();
+            const año = ahora.getFullYear();
+            const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+            const dia = String(ahora.getDate()).padStart(2, '0');
+            return `${año}-${mes}-${dia}`;
+        }
+        
+        // FUNCIÓN CORREGIDA: Obtener fecha y hora local
+        function obtenerFechaHoraLocal() {
+            const ahora = new Date();
+            const fecha = obtenerFechaLocal();
+            const hora = ahora.toTimeString().split(' ')[0];
+            return { fecha, hora };
+        }
+        
+        // Función para guardar en localStorage
+        function guardarEnLocalStorage(clave, valor) {
+            try {
+                localStorage.setItem(clave, JSON.stringify(valor));
+                return true;
+            } catch (e) {
+                console.error('Error guardando en localStorage:', e);
+                return false;
+            }
+        }
+        
+        // Función para cargar desde localStorage
+        function cargarDesdeLocalStorage(clave, valorPorDefecto) {
+            try {
+                const valor = localStorage.getItem(clave);
+                return valor ? JSON.parse(valor) : valorPorDefecto;
+            } catch (e) {
+                console.error('Error cargando desde localStorage:', e);
+                return valorPorDefecto;
+            }
+        }
+        
+        // Función para mostrar bienvenida
+        function mostrarBienvenida() {
+            const welcomeMessage = document.getElementById('welcome-message');
+            welcomeMessage.style.display = 'block';
+            
+            // Ocultar después de 5 segundos
+            setTimeout(() => {
+                welcomeMessage.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Actualizar estado de la nube
+        function actualizarEstadoNube(conectado, mensaje = '') {
+            const cloudStatus = document.getElementById('cloud-status');
+            const cloudStatusText = document.getElementById('cloud-status-text');
+            
+            if (conectado) {
+                cloudStatus.className = 'cloud-status cloud-connected';
+                cloudStatusText.textContent = mensaje || 'Conectado a la nube';
+            } else {
+                cloudStatus.className = 'cloud-status cloud-disconnected';
+                cloudStatusText.textContent = mensaje || 'Desconectado';
+            }
+        }
+        
+        // FUNCIÓN CORREGIDA: Iniciar sesión con Google - SOLO POPUP
+        async function iniciarSesionGoogle() {
+            try {
+                console.log("🔄 Iniciando proceso de login...");
+                const provider = new GoogleAuthProvider();
+                
+                // Configurar provider
+                provider.addScope('email');
+                provider.addScope('profile');
+                
+                // 🚨 USAR SIEMPRE POPUP - incluso en móvil
+                console.log("📱 Usando POPUP (forzado)...");
+                const result = await signInWithPopup(window.firebaseAuth, provider);
+                
+                // Si llegamos aquí, el login fue exitoso
+                console.log("✅ Login exitoso con popup:", result.user.email);
+                usuarioGoogle = result.user;
+                actualizarEstadoNube(true, `Conectado como ${usuarioGoogle.displayName}`);
+                mostrarMensaje(`✅ Sesión iniciada con Google: ${usuarioGoogle.displayName}`, 'success');
+                
+                // Actualizar interfaz
+                document.getElementById('login-google').style.display = 'none';
+                document.getElementById('logout-google').style.display = 'flex';
+                
+                // Cargar datos desde la nube
+                await cargarDatosDesdeLaNube();
+                
+            } catch (error) {
+                console.error('❌ Error completo al iniciar sesión:', error);
+                console.error('🔧 Código de error:', error.code);
+                console.error('📝 Mensaje de error:', error.message);
+                
+                // Mostrar error específico para el usuario
+                let mensajeError = 'Error al iniciar sesión con Google';
+                if (error.code === 'auth/popup-blocked') {
+                    mensajeError = 'El popup fue bloqueado. Permite popups para este sitio.';
+                } else if (error.code === 'auth/popup-closed-by-user') {
+                    mensajeError = 'Cerraste la ventana de inicio de sesión.';
+                } else {
+                    mensajeError = 'Error: ' + error.message;
+                }
+                
+                mostrarMensaje('❌ ' + mensajeError, 'error');
+            }
+        }
+        
+        // Función para cerrar sesión
+        async function cerrarSesionGoogle() {
+            try {
+                await signOut(window.firebaseAuth);
+                usuarioGoogle = null;
+                actualizarEstadoNube(false, 'Desconectado');
+                mostrarMensaje('✅ Sesión cerrada correctamente', 'success');
+                
+                // Ocultar botón de logout, mostrar login
+                document.getElementById('logout-google').style.display = 'none';
+                document.getElementById('login-google').style.display = 'flex';
+                
+                // Volver a cargar datos locales
+                cargarDatosIniciales();
+                inicializarTabla();
+                actualizarFiltros();
+            } catch (error) {
+                console.error('Error al cerrar sesión:', error);
+                mostrarMensaje('❌ Error al cerrar sesión', 'error');
+            }
+        }
+        
+        // Función para guardar datos en la nube
+        async function guardarDatosEnLaNube() {
+            if (!usuarioGoogle) {
+                actualizarEstadoNube(false, 'No hay usuario autenticado');
+                return false;
+            }
+            
+            try {
+                const datosSistema = {
+                    usuarios: usuarios,
+                    registros: registros,
+                    usuarioActual: usuarioActual,
+                    ultimaEntrada: ultimaEntrada,
+                    configWhatsApp: configWhatsApp,
+                    salarioHora: document.getElementById('salario-hora').value,
+                    fechaActualizacion: serverTimestamp()
+                };
+                
+                await firebaseSetDoc(firebaseDoc(window.firebaseDb, 'usuarios', usuarioGoogle.uid), datosSistema);
+                actualizarEstadoNube(true, 'Datos guardados en la nube');
+                return true;
+            } catch (error) {
+                console.error('Error guardando en la nube:', error);
+                actualizarEstadoNube(false, 'Error guardando en la nube');
+                return false;
+            }
+        }
+        
+        // Función para cargar datos desde la nube
+        async function cargarDatosDesdeLaNube() {
+            if (!usuarioGoogle) {
+                return false;
+            }
+            
+            try {
+                const docRef = firebaseDoc(window.firebaseDb, 'usuarios', usuarioGoogle.uid);
+                const docSnap = await firebaseGetDoc(docRef);
+                
+                if (docSnap.exists()) {
+                    const datos = docSnap.data();
+                    
+                    // Actualizar datos locales con los de la nube
+                    usuarios = datos.usuarios || [];
+                    registros = datos.registros || [];
+                    usuarioActual = datos.usuarioActual || null;
+                    ultimaEntrada = datos.ultimaEntrada || {};
+                    configWhatsApp = datos.configWhatsApp || configWhatsApp;
+                    
+                    if (datos.salarioHora) {
+                        document.getElementById('salario-hora').value = datos.salarioHora;
+                    }
+                    
+                    // Guardar también en localStorage como respaldo
+                    guardarEnLocalStorage('usuarios', usuarios);
+                    guardarEnLocalStorage('registros', registros);
+                    guardarEnLocalStorage('usuarioActual', usuarioActual);
+                    guardarEnLocalStorage('ultimaEntrada', ultimaEntrada);
+                    
+                    // Actualizar interfaz
+                    if (usuarioActual) {
+                        actualizarDisplayUsuario();
+                    } else {
+                        mostrarModalUsuario();
+                    }
+                    
+                    inicializarTabla();
+                    actualizarFiltros();
+                    
+                    datosEnLaNube = true;
+                    actualizarEstadoNube(true, 'Datos cargados desde la nube');
+                    mostrarMensaje('✅ Datos sincronizados desde la nube', 'success');
+                    return true;
+                } else {
+                    // No hay datos en la nube, guardar los locales
+                    await guardarDatosEnLaNube();
+                    actualizarEstadoNube(true, 'Nuevo perfil creado en la nube');
+                    return true;
+                }
+            } catch (error) {
+                console.error('Error cargando desde la nube:', error);
+                actualizarEstadoNube(false, 'Error cargando desde la nube');
+                return false;
+            }
+        }
+        
+        // Exportar todo el sistema
+        function exportarSistema() {
+            try {
+                const datosSistema = {
+                    usuarios: usuarios,
+                    registros: registros,
+                    usuarioActual: usuarioActual,
+                    ultimaEntrada: ultimaEntrada,
+                    configWhatsApp: configWhatsApp,
+                    salarioHora: document.getElementById('salario-hora').value,
+                    fechaExportacion: new Date().toISOString()
+                };
+                
+                const datosJSON = JSON.stringify(datosSistema, null, 2);
+                const blob = new Blob([datosJSON], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `sistema_turnos_editorial_binomio_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                mostrarMensaje('✅ Sistema exportado correctamente', 'success');
+            } catch (error) {
+                console.error('Error al exportar sistema:', error);
+                mostrarMensaje('❌ Error al exportar el sistema', 'error');
+            }
+        }
+        
+        // Importar todo el sistema
+        function importarSistema() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            
+            input.onchange = function(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const datosSistema = JSON.parse(e.target.result);
+                        
+                        // Validar estructura básica
+                        if (!datosSistema.usuarios || !datosSistema.registros) {
+                            throw new Error('Archivo no válido');
+                        }
+                        
+                        // Importar datos
+                        usuarios = datosSistema.usuarios;
+                        registros = datosSistema.registros;
+                        usuarioActual = datosSistema.usuarioActual;
+                        ultimaEntrada = datosSistema.ultimaEntrada || {};
+                        configWhatsApp = datosSistema.configWhatsApp || configWhatsApp;
+                        
+                        if (datosSistema.salarioHora) {
+                            document.getElementById('salario-hora').value = datosSistema.salarioHora;
+                        }
+                        
+                        // Guardar en localStorage
+                        guardarEnLocalStorage('usuarios', usuarios);
+                        guardarEnLocalStorage('registros', registros);
+                        guardarEnLocalStorage('usuarioActual', usuarioActual);
+                        guardarEnLocalStorage('ultimaEntrada', ultimaEntrada);
+                        
+                        // Guardar en la nube si está autenticado
+                        if (usuarioGoogle) {
+                            guardarDatosEnLaNube();
+                        }
+                        
+                        // Actualizar interfaz
+                        if (usuarioActual) {
+                            actualizarDisplayUsuario();
+                        } else {
+                            mostrarModalUsuario();
+                        }
+                        
+                        inicializarTabla();
+                        actualizarFiltros();
+                        
+                        mostrarMensaje('✅ Sistema importado correctamente', 'success');
+                    } catch (error) {
+                        console.error('Error al importar sistema:', error);
+                        mostrarMensaje('❌ Error al importar el sistema. Archivo corrupto.', 'error');
+                    }
+                };
+                reader.readAsText(file);
+            };
+            
+            input.click();
+        }
+        
+        // Actualizar hora actual
+        function actualizarHoraActual() {
+            const ahora = new Date();
+            const opciones = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            };
+            document.getElementById('current-time').textContent = 
+                `🕒 ${ahora.toLocaleDateString('es-ES', opciones)}`;
+        }
+        
+        // Cargar datos iniciales
+        function cargarDatosIniciales() {
+            usuarios = cargarDesdeLocalStorage('usuarios', []);
+            registros = cargarDesdeLocalStorage('registros', []);
+            usuarioActual = cargarDesdeLocalStorage('usuarioActual', null);
+            ultimaEntrada = cargarDesdeLocalStorage('ultimaEntrada', {});
+            
+            // Si no hay usuarios, crear algunos de ejemplo
+            if (usuarios.length === 0) {
+                usuarios = ['MARCO MAIDANA', 'JUAN PÉREZ', 'MARÍA GARCÍA'];
+                guardarEnLocalStorage('usuarios', usuarios);
+            }
+        }
+        
+        // Inicializar la aplicación
+        function inicializarAplicacion() {
+            console.log("🚀 Inicializando aplicación...");
+            cargarDatosIniciales();
+            actualizarHoraActual();
+            setInterval(actualizarHoraActual, 1000);
+            
+            // Configurar autenticación de Firebase
+            onAuthStateChanged(window.firebaseAuth, (user) => {
+                console.log("🔐 Estado de autenticación cambiado:", user ? user.email : "No autenticado");
+                if (user) {
+                    // Usuario autenticado
+                    usuarioGoogle = user;
+                    document.getElementById('login-google').style.display = 'none';
+                    document.getElementById('logout-google').style.display = 'flex';
+                    actualizarEstadoNube(true, `Conectado como ${user.displayName}`);
+                    
+                    // Cargar datos desde la nube
+                    cargarDatosDesdeLaNube().then(() => {
+                        if (!usuarioActual) {
+                            mostrarModalUsuario();
+                        } else {
+                            actualizarDisplayUsuario();
+                        }
+                    });
+                } else {
+                    // Usuario no autenticado
+                    usuarioGoogle = null;
+                    document.getElementById('login-google').style.display = 'flex';
+                    document.getElementById('logout-google').style.display = 'none';
+                    actualizarEstadoNube(false, 'Inicia sesión para guardar en la nube');
+                    
+                    if (!usuarioActual) {
+                        mostrarModalUsuario();
+                    } else {
+                        actualizarDisplayUsuario();
+                    }
+                }
+            });
+            
+            inicializarTabla();
+            actualizarFiltros();
+            
+            // Mostrar mensaje de bienvenida
+            mostrarBienvenida();
+            console.log("✅ Aplicación inicializada correctamente");
+        }
+        
+        // Mostrar modal para seleccionar usuario
+        function mostrarModalUsuario() {
+            actualizarListaUsuarios();
+            document.getElementById('usuario-modal').style.display = 'flex';
+            document.getElementById('nuevo-usuario').focus();
+        }
+        
+        // Actualizar lista de usuarios en el modal
+        function actualizarListaUsuarios() {
+            const lista = document.getElementById('lista-usuarios');
+            lista.innerHTML = '';
+            
+            if (usuarios.length === 0) {
+                lista.innerHTML = '<div class="loading">No hay usuarios. Crea el primero.</div>';
+                return;
+            }
+            
+            usuarios.forEach(usuario => {
+                const item = document.createElement('div');
+                item.className = 'usuario-item';
+                item.innerHTML = `
+                    <span>${usuario}</span>
+                    <div class="usuario-actions">
+                        <button class="btn-small btn-seleccionar" data-usuario="${usuario}">Seleccionar</button>
+                    </div>
+                `;
+                lista.appendChild(item);
+            });
+            
+            document.querySelectorAll('.btn-seleccionar').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const usuario = e.target.getAttribute('data-usuario');
+                    seleccionarUsuario(usuario);
+                });
+            });
+        }
+        
+        // Seleccionar usuario
+        function seleccionarUsuario(usuario) {
+            usuarioActual = usuario;
+            guardarEnLocalStorage('usuarioActual', usuarioActual);
+            
+            // Guardar en la nube si está autenticado
+            if (usuarioGoogle) {
+                guardarDatosEnLaNube();
+            }
+            
+            actualizarDisplayUsuario();
+            document.getElementById('usuario-modal').style.display = 'none';
+            mostrarMensaje(`Usuario seleccionado: ${usuarioActual}`, 'success');
+        }
+        
+        // Crear nuevo usuario
+        function crearUsuario() {
+            const nuevoUsuario = document.getElementById('nuevo-usuario').value.trim();
+            
+            if (nuevoUsuario) {
+                if (!usuarios.includes(nuevoUsuario)) {
+                    usuarios.push(nuevoUsuario);
+                    if (guardarEnLocalStorage('usuarios', usuarios)) {
+                        seleccionarUsuario(nuevoUsuario);
+                        
+                        // Guardar en la nube si está autenticado
+                        if (usuarioGoogle) {
+                            guardarDatosEnLaNube();
+                        }
+                    } else {
+                        mostrarMensaje('Error al guardar el usuario', 'error');
+                    }
+                } else {
+                    mostrarMensaje('Este usuario ya existe', 'error');
+                }
+            } else {
+                alert('Por favor, ingresa un nombre válido.');
+            }
+        }
+        
+        // Actualizar display del usuario
+        function actualizarDisplayUsuario() {
+            document.getElementById('nombre-display').textContent = usuarioActual;
+        }
+        
+        // Cambiar usuario
+        function cambiarUsuario() {
+            mostrarModalUsuario();
+        }
+        
+        // Gestión de usuarios
+        function gestionUsuarios() {
+            const lista = document.getElementById('lista-gestion-usuarios');
+            lista.innerHTML = '';
+            
+            usuarios.forEach(usuario => {
+                const item = document.createElement('div');
+                item.className = 'usuario-item';
+                item.innerHTML = `
+                    <span>${usuario}</span>
+                    <div class="usuario-actions">
+                        <button class="btn-small btn-seleccionar" data-usuario="${usuario}">Seleccionar</button>
+                        ${usuario !== usuarioActual ? 
+                            `<button class="btn-small btn-eliminar" data-usuario="${usuario}">Eliminar</button>` : 
+                            '<span style="color: #4CAF50;">(Actual)</span>'
+                        }
+                    </div>
+                `;
+                lista.appendChild(item);
+            });
+            
+            document.querySelectorAll('#lista-gestion-usuarios .btn-seleccionar').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const usuario = e.target.getAttribute('data-usuario');
+                    seleccionarUsuario(usuario);
+                    document.getElementById('gestion-modal').style.display = 'none';
+                });
+            });
+            
+            document.querySelectorAll('#lista-gestion-usuarios .btn-eliminar').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const usuario = e.target.getAttribute('data-usuario');
+                    eliminarUsuario(usuario);
+                });
+            });
+            
+            document.getElementById('gestion-modal').style.display = 'flex';
+        }
+        
+        // Eliminar usuario
+        function eliminarUsuario(usuario) {
+            if (confirm(`¿Estás seguro de que quieres eliminar al usuario "${usuario}"?`)) {
+                usuarios = usuarios.filter(u => u !== usuario);
+                if (guardarEnLocalStorage('usuarios', usuarios)) {
+                    if (usuarioActual === usuario) {
+                        usuarioActual = usuarios.length > 0 ? usuarios[0] : null;
+                        guardarEnLocalStorage('usuarioActual', usuarioActual);
+                        actualizarDisplayUsuario();
+                    }
+                    
+                    // Guardar en la nube si está autenticado
+                    if (usuarioGoogle) {
+                        guardarDatosEnLaNube();
+                    }
+                    
+                    gestionUsuarios();
+                    mostrarMensaje(`Usuario "${usuario}" eliminado correctamente`, 'success');
+                } else {
+                    mostrarMensaje('Error al eliminar el usuario', 'error');
+                }
+            }
+        }
+        
+        // Actualizar filtros
+        function actualizarFiltros() {
+            const filtroUsuario = document.getElementById('filtro-usuario');
+            filtroUsuario.innerHTML = '<option value="todos">Todos los usuarios</option>';
+            
+            usuarios.forEach(usuario => {
+                const option = document.createElement('option');
+                option.value = usuario;
+                option.textContent = usuario;
+                filtroUsuario.appendChild(option);
+            });
+            
+            if (usuarioActual) {
+                filtroUsuario.value = usuarioActual;
+            }
+        }
+        
+        // Calcular horas trabajadas entre dos horarios
+        function calcularHorasTrabajadas(horaEntrada, horaSalida) {
+            const [hEnt, mEnt, sEnt] = horaEntrada.split(':').map(Number);
+            const [hSal, mSal, sSal] = horaSalida.split(':').map(Number);
+            
+            const entradaSegundos = hEnt * 3600 + mEnt * 60 + (sEnt || 0);
+            const salidaSegundos = hSal * 3600 + mSal * 60 + (sSal || 0);
+            
+            let diferenciaSegundos = salidaSegundos - entradaSegundos;
+            
+            if (diferenciaSegundos < 0) {
+                diferenciaSegundos += 24 * 3600;
+            }
+            
+            const horas = Math.floor(diferenciaSegundos / 3600);
+            const minutos = Math.floor((diferenciaSegundos % 3600) / 60);
+            const segundos = diferenciaSegundos % 60;
+            
+            return `${horas}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+        }
+        
+        // Convertir formato HH:MM:SS a horas decimales
+        function formatoHoraADecimal(horaFormato) {
+            const [horas, minutos, segundos] = horaFormato.split(':').map(Number);
+            return horas + (minutos / 60) + (segundos / 3600);
+        }
+        
+        // Buscar entrada correspondiente para calcular horas
+        function buscarEntradaCorrespondiente(usuario, fecha, turno) {
+            return registros.find(registro => 
+                registro.usuario === usuario && 
+                registro.fecha === fecha && 
+                registro.turno === turno && 
+                registro.tipo === 'Entrada'
+            );
+        }
+        
+        // Inicializar la tabla con los registros
+        function inicializarTabla() {
+            aplicarFiltros();
+        }
+        
+        // Aplicar filtros a la tabla
+        function aplicarFiltros() {
+            const filtroUsuario = document.getElementById('filtro-usuario').value;
+            const filtroFecha = document.getElementById('filtro-fecha').value;
+            
+            const registrosFiltrados = registros.filter(registro => {
+                const coincideUsuario = filtroUsuario === 'todos' || registro.usuario === filtroUsuario;
+                const coincideFecha = !filtroFecha || registro.fecha === filtroFecha;
+                
+                return coincideUsuario && coincideFecha;
+            });
+            
+            actualizarTabla(registrosFiltrados);
+            actualizarResumenPago(registrosFiltrados);
+        }
+        
+        // Actualizar tabla con registros
+        function actualizarTabla(registrosMostrar) {
+            const cuerpoTabla = document.getElementById('cuerpo-tabla');
+            cuerpoTabla.innerHTML = '';
+            
+            if (registrosMostrar.length === 0) {
+                cuerpoTabla.innerHTML = `
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 25px; color: #aaa;">
+                            No hay registros para mostrar
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+            
+            registrosMostrar.forEach(registro => {
+                const fila = document.createElement('tr');
+                fila.innerHTML = `
+                    <td>${registro.usuario}</td>
+                    <td>${registro.fecha}</td>
+                    <td>${registro.hora}</td>
+                    <td>${registro.turno}</td>
+                    <td>${registro.tipo}</td>
+                    <td>${registro.horas}</td>
+                    <td>$${registro.total.toFixed(2)}</td>
+                `;
+                cuerpoTabla.appendChild(fila);
+            });
+        }
+        
+        // Actualizar el resumen de pago
+        function actualizarResumenPago(registrosMostrar = registros) {
+            const salarioHora = parseFloat(document.getElementById('salario-hora').value) || 0;
+            let totalHoras = 0;
+            let totalPagar = 0;
+            
+            registrosMostrar.forEach(registro => {
+                if (registro.tipo === 'Salida') {
+                    totalHoras += parseFloat(registro.horas);
+                    totalPagar += parseFloat(registro.total);
+                }
+            });
+            
+            document.getElementById('total-horas').value = totalHoras.toFixed(2) + ' horas';
+            document.getElementById('total-pagar').value = '$' + totalPagar.toFixed(2);
+        }
+        
+        // Mostrar mensaje de estado
+        function mostrarMensaje(mensaje, tipo) {
+            const statusElement = document.getElementById('status-message');
+            statusElement.textContent = mensaje;
+            statusElement.className = 'status';
+            statusElement.classList.add(tipo === 'success' ? 'status-success' : 'status-error');
+            statusElement.style.display = 'block';
+            
+            setTimeout(() => {
+                statusElement.style.display = 'none';
+            }, 5000);
+        }
+        
+        // Función para enviar mensaje por WhatsApp
+        function enviarWhatsApp(turno, tipo) {
+            const { fecha, hora } = obtenerFechaHoraLocal();
+            
+            let emojiTipo = '🟢';
+            if (tipo === 'Entrada') emojiTipo = '🔵';
+            if (tipo === 'Salida') emojiTipo = '🟢';
+            
+            const mensaje = configWhatsApp.mensaje
+                .replace('{empleado}', usuarioActual.toUpperCase())
+                .replace('{fecha}', fecha)
+                .replace('{hora}', hora)
+                .replace('{tipo}', tipo.toUpperCase())
+                .replace('{turno}', turno.toUpperCase());
+            
+            const mensajeCodificado = encodeURIComponent(mensaje);
+            const numeroLimpio = configWhatsApp.numero.replace(/\D/g, '');
+            const urlWhatsApp = `https://wa.me/${numeroLimpio}?text=${mensajeCodificado}`;
+            
+            window.open(urlWhatsApp, '_blank');
+            
+            return { fecha, hora, mensaje };
+        }
+        
+        // FUNCIÓN CRÍTICAMENTE CORREGIDA: Registrar entrada/salida con fecha LOCAL
+        async function registrarTurno(turno, tipo) {
+            if (!usuarioActual) {
+                mostrarMensaje('Primero debes seleccionar un usuario', 'error');
+                mostrarModalUsuario();
+                return;
+            }
+            
+            const { fecha, hora } = obtenerFechaHoraLocal();
+            const salarioHora = parseFloat(document.getElementById('salario-hora').value) || 0;
+            
+            let horas = 0;
+            let total = 0;
+            
+            if (tipo === 'Entrada') {
+                ultimaEntrada[usuarioActual] = { fecha, hora, turno };
+                guardarEnLocalStorage('ultimaEntrada', ultimaEntrada);
+                horas = 0;
+                total = 0;
+            } else if (tipo === 'Salida') {
+                const entrada = buscarEntradaCorrespondiente(usuarioActual, fecha, turno);
+                if (entrada) {
+                    const horasFormato = calcularHorasTrabajadas(entrada.hora, hora);
+                    horas = formatoHoraADecimal(horasFormato);
+                    total = horas * salarioHora;
+                } else {
+                    horas = 8;
+                    total = horas * salarioHora;
+                    mostrarMensaje('No se encontró registro de entrada. Se usó valor por defecto de 8 horas.', 'error');
+                }
+            }
+            
+            const nuevoRegistro = {
+                usuario: usuarioActual,
+                fecha, // ✅ AHORA USA FECHA LOCAL CORRECTA
+                hora,
+                turno,
+                tipo,
+                horas: parseFloat(horas),
+                total: parseFloat(total)
+            };
+            
+            registros.push(nuevoRegistro);
+            if (guardarEnLocalStorage('registros', registros)) {
+                inicializarTabla();
+                actualizarFiltros();
+                const infoWhatsApp = enviarWhatsApp(turno, tipo);
+                
+                // Guardar en la nube si está autenticado
+                if (usuarioGoogle) {
+                    await guardarDatosEnLaNube();
+                }
+                
+                mostrarMensaje(`✅ ${tipo} ${turno} registrado correctamente para ${fecha}. Horas: ${horas.toFixed(2)} - Total: $${total.toFixed(2)}`, 'success');
+            } else {
+                mostrarMensaje('Error al guardar el registro', 'error');
+            }
+        }
+        
+        // FUNCIÓN SIMPLIFICADA: Generar Excel solo con fechas
+        function descargarExcel() {
+            try {
+                const wb = XLSX.utils.book_new();
+                const salarioHora = parseFloat(document.getElementById('salario-hora').value) || 0;
+                
+                // Agrupar registros por mes
+                const registrosPorMes = {};
+                
+                registros.forEach(registro => {
+                    const fecha = new Date(registro.fecha);
+                    const mes = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+                    
+                    if (!registrosPorMes[mes]) {
+                        registrosPorMes[mes] = [];
+                    }
+                    registrosPorMes[mes].push(registro);
+                });
+                
+                // Si no hay registros, crear mes actual
+                if (Object.keys(registrosPorMes).length === 0) {
+                    const ahora = new Date();
+                    const mesActual = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
+                    registrosPorMes[mesActual] = [];
+                }
+                
+                // Crear hoja por cada mes
+                Object.keys(registrosPorMes).forEach(mes => {
+                    const datosMes = registrosPorMes[mes];
+                    const [año, mesNum] = mes.split('-');
+                    const nombreMes = new Date(año, mesNum - 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+                    
+                    const datosExcel = [];
+                    
+                    // Encabezado
+                    datosExcel.push(['REGISTRO DE TURNOS - EDITORIAL BINOMIO']);
+                    datosExcel.push([`Mes: ${nombreMes.toUpperCase()}`]);
+                    datosExcel.push(['']);
+                    
+                    // Encabezado de tabla SOLO CON FECHAS
+                    datosExcel.push([
+                        'FECHA', 'ENTRADA MAÑANA', 'SALIDA MAÑANA', 'HORAS MAÑANA', 
+                        'ENTRADA TARDE', 'SALIDA TARDE', 'HORAS TARDE'
+                    ]);
+                    
+                    // Agrupar por fecha
+                    const registrosPorFecha = {};
+                    
+                    datosMes.forEach(registro => {
+                        if (!registrosPorFecha[registro.fecha]) {
+                            registrosPorFecha[registro.fecha] = {
+                                mañana: { entrada: '', salida: '', horas: '0:00:00' },
+                                tarde: { entrada: '', salida: '', horas: '0:00:00' }
+                            };
+                        }
+                        
+                        if (registro.turno === 'Mañana') {
+                            if (registro.tipo === 'Entrada') {
+                                registrosPorFecha[registro.fecha].mañana.entrada = registro.hora;
+                            } else if (registro.tipo === 'Salida') {
+                                registrosPorFecha[registro.fecha].mañana.salida = registro.hora;
+                                if (registrosPorFecha[registro.fecha].mañana.entrada) {
+                                    registrosPorFecha[registro.fecha].mañana.horas = 
+                                        calcularHorasTrabajadas(registrosPorFecha[registro.fecha].mañana.entrada, registro.hora);
+                                }
+                            }
+                        } else if (registro.turno === 'Tarde') {
+                            if (registro.tipo === 'Entrada') {
+                                registrosPorFecha[registro.fecha].tarde.entrada = registro.hora;
+                            } else if (registro.tipo === 'Salida') {
+                                registrosPorFecha[registro.fecha].tarde.salida = registro.hora;
+                                if (registrosPorFecha[registro.fecha].tarde.entrada) {
+                                    registrosPorFecha[registro.fecha].tarde.horas = 
+                                        calcularHorasTrabajadas(registrosPorFecha[registro.fecha].tarde.entrada, registro.hora);
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Ordenar fechas
+                    const fechasOrdenadas = Object.keys(registrosPorFecha).sort();
+                    let totalHorasMes = 0;
+                    
+                    fechasOrdenadas.forEach(fecha => {
+                        const datos = registrosPorFecha[fecha];
+                        
+                        datosExcel.push([
+                            fecha,
+                            datos.mañana.entrada,
+                            datos.mañana.salida,
+                            datos.mañana.horas,
+                            datos.tarde.entrada,
+                            datos.tarde.salida,
+                            datos.tarde.horas
+                        ]);
+                        
+                        // Sumar horas
+                        if (datos.mañana.horas !== '0:00:00') {
+                            totalHorasMes += formatoHoraADecimal(datos.mañana.horas);
+                        }
+                        if (datos.tarde.horas !== '0:00:00') {
+                            totalHorasMes += formatoHoraADecimal(datos.tarde.horas);
+                        }
+                    });
+                    
+                    // Totales
+                    datosExcel.push(['']);
+                    datosExcel.push(['TOTAL DE HORAS TRABAJADAS EN EL MES:', '', '', convertirDecimalAFormatoHora(totalHorasMes)]);
+                    datosExcel.push(['TOTAL A PAGAR:', '', '', `$${(totalHorasMes * salarioHora).toFixed(2)}`]);
+                    datosExcel.push(['SALARIO POR HORA:', '', '', `$${salarioHora.toFixed(2)}`]);
+                    
+                    const ws = XLSX.utils.aoa_to_sheet(datosExcel);
+                    XLSX.utils.book_append_sheet(wb, ws, `MES_${mes}`);
+                });
+                
+                XLSX.writeFile(wb, `REGISTRO_TURNOS_EDITORIAL_BINOMIO_${new Date().toISOString().split('T')[0]}.xlsx`);
+                mostrarMensaje('📊 Excel descargado correctamente', 'success');
+            } catch (error) {
+                console.error('Error al generar Excel:', error);
+                mostrarMensaje('❌ Error al generar el archivo Excel', 'error');
+            }
+        }
+        
+        // Convertir horas decimales a formato HH:MM:SS
+        function convertirDecimalAFormatoHora(horasDecimal) {
+            const horas = Math.floor(horasDecimal);
+            const minutos = Math.floor((horasDecimal - horas) * 60);
+            const segundos = Math.floor(((horasDecimal - horas) * 60 - minutos) * 60);
+            return `${horas}:${minutos.toString().padStart(2, '0')}:${segundos.toString().padStart(2, '0')}`;
+        }
+        
+        // Renovar hoja
+        async function renovarHoja() {
+            if (confirm('¿Estás seguro de que quieres limpiar todos los registros?')) {
+                registros = [];
+                if (guardarEnLocalStorage('registros', registros)) {
+                    
+                    // Guardar en la nube si está autenticado
+                    if (usuarioGoogle) {
+                        await guardarDatosEnLaNube();
+                    }
+                    
+                    inicializarTabla();
+                    mostrarMensaje('🗑️ Todos los registros han sido eliminados', 'success');
+                } else {
+                    mostrarMensaje('Error al limpiar los registros', 'error');
+                }
+            }
+        }
+        
+        // FUNCIÓN CORREGIDA: Imprimir reporte
+        function imprimirExcel() {
+            try {
+                const salarioHora = parseFloat(document.getElementById('salario-hora').value) || 0;
+                
+                // Obtener el mes actual para el reporte
+                const ahora = new Date();
+                const mesActual = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
+                const nombreMes = ahora.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+                
+                // Filtrar registros del mes actual
+                const registrosMesActual = registros.filter(registro => {
+                    const fechaRegistro = new Date(registro.fecha);
+                    const mesRegistro = `${fechaRegistro.getFullYear()}-${String(fechaRegistro.getMonth() + 1).padStart(2, '0')}`;
+                    return mesRegistro === mesActual;
+                });
+                
+                // Agrupar por fecha
+                const registrosPorFecha = {};
+                let totalHorasMes = 0;
+                
+                registrosMesActual.forEach(registro => {
+                    if (!registrosPorFecha[registro.fecha]) {
+                        registrosPorFecha[registro.fecha] = {
+                            mañana: { entrada: '', salida: '', horas: '0:00:00' },
+                            tarde: { entrada: '', salida: '', horas: '0:00:00' }
+                        };
+                    }
+                    
+                    if (registro.turno === 'Mañana') {
+                        if (registro.tipo === 'Entrada') {
+                            registrosPorFecha[registro.fecha].mañana.entrada = registro.hora;
+                        } else if (registro.tipo === 'Salida') {
+                            registrosPorFecha[registro.fecha].mañana.salida = registro.hora;
+                            if (registrosPorFecha[registro.fecha].mañana.entrada) {
+                                registrosPorFecha[registro.fecha].mañana.horas = 
+                                    calcularHorasTrabajadas(registrosPorFecha[registro.fecha].mañana.entrada, registro.hora);
+                                totalHorasMes += formatoHoraADecimal(registrosPorFecha[registro.fecha].mañana.horas);
+                            }
+                        }
+                    } else if (registro.turno === 'Tarde') {
+                        if (registro.tipo === 'Entrada') {
+                            registrosPorFecha[registro.fecha].tarde.entrada = registro.hora;
+                        } else if (registro.tipo === 'Salida') {
+                            registrosPorFecha[registro.fecha].tarde.salida = registro.hora;
+                            if (registrosPorFecha[registro.fecha].tarde.entrada) {
+                                registrosPorFecha[registro.fecha].tarde.horas = 
+                                    calcularHorasTrabajadas(registrosPorFecha[registro.fecha].tarde.entrada, registro.hora);
+                                totalHorasMes += formatoHoraADecimal(registrosPorFecha[registro.fecha].tarde.horas);
+                            }
+                        }
+                    }
+                });
+                
+                // Ordenar fechas
+                const fechasOrdenadas = Object.keys(registrosPorFecha).sort();
+                
+                // Crear tabla HTML para imprimir
+                let tablaHTML = `
+                    <table border="1" style="width: 100%; border-collapse: collapse; margin: 20px 0; font-family: Arial, sans-serif;">
+                        <thead>
+                            <tr style="background-color: #1e3c72; color: white;">
+                                <th style="padding: 12px; border: 1px solid #000;">FECHA</th>
+                                <th style="padding: 12px; border: 1px solid #000;">ENTRADA MAÑANA</th>
+                                <th style="padding: 12px; border: 1px solid #000;">SALIDA MAÑANA</th>
+                                <th style="padding: 12px; border: 1px solid #000;">HORAS MAÑANA</th>
+                                <th style="padding: 12px; border: 1px solid #000;">ENTRADA TARDE</th>
+                                <th style="padding: 12px; border: 1px solid #000;">SALIDA TARDE</th>
+                                <th style="padding: 12px; border: 1px solid #000;">HORAS TARDE</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                fechasOrdenadas.forEach(fecha => {
+                    const datos = registrosPorFecha[fecha];
+                    tablaHTML += `
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #000;">${fecha}</td>
+                            <td style="padding: 10px; border: 1px solid #000; text-align: center;">${datos.mañana.entrada}</td>
+                            <td style="padding: 10px; border: 1px solid #000; text-align: center;">${datos.mañana.salida}</td>
+                            <td style="padding: 10px; border: 1px solid #000; text-align: center;">${datos.mañana.horas}</td>
+                            <td style="padding: 10px; border: 1px solid #000; text-align: center;">${datos.tarde.entrada}</td>
+                            <td style="padding: 10px; border: 1px solid #000; text-align: center;">${datos.tarde.salida}</td>
+                            <td style="padding: 10px; border: 1px solid #000; text-align: center;">${datos.tarde.horas}</td>
+                        </tr>
+                    `;
+                });
+                
+                tablaHTML += `
+                        </tbody>
+                    </table>
+                    <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border: 2px solid #1e3c72; border-radius: 5px;">
+                        <h3 style="color: #1e3c72; margin-bottom: 10px;">RESUMEN MENSUAL</h3>
+                        <p><strong>Total de Horas Trabajadas:</strong> ${convertirDecimalAFormatoHora(totalHorasMes)}</p>
+                        <p><strong>Total a Pagar:</strong> $${(totalHorasMes * salarioHora).toFixed(2)}</p>
+                        <p><strong>Salario por Hora:</strong> $${salarioHora.toFixed(2)}</p>
+                    </div>
+                `;
+                
+                // Crear ventana de impresión
+                const ventanaImpresion = window.open('', '_blank', 'width=1000,height=600');
+                ventanaImpresion.document.write(`
+                    <html>
+                        <head>
+                            <title>REGISTRO DE TURNOS - EDITORIAL BINOMIO</title>
+                            <style>
+                                body { 
+                                    font-family: Arial, sans-serif; 
+                                    padding: 20px; 
+                                    margin: 0;
+                                    color: #000;
+                                }
+                                .header { 
+                                    text-align: center; 
+                                    margin-bottom: 30px; 
+                                    border-bottom: 3px solid #1e3c72; 
+                                    padding-bottom: 15px; 
+                                }
+                                h1 { 
+                                    color: #1e3c72; 
+                                    margin: 0; 
+                                    font-size: 24px; 
+                                }
+                                h2 { 
+                                    color: #2a5298; 
+                                    margin: 10px 0; 
+                                    font-size: 18px; 
+                                }
+                                @media print {
+                                    body { padding: 0; margin: 0; }
+                                    .no-print { display: none; }
+                                    .header { border-bottom: 2px solid #1e3c72; }
+                                }
+                            </style>
+                        </head>
+                        <body>
+                            <div class="header">
+                                <h1>REGISTRO DE TURNOS - EDITORIAL BINOMIO</h1>
+                                <h2>${nombreMes.toUpperCase()}</h2>
+                                <p><strong>Fecha de generación:</strong> ${new Date().toLocaleDateString('es-ES')}</p>
+                            </div>
+                            ${tablaHTML}
+                            <div class="no-print" style="text-align: center; margin-top: 30px;">
+                                <button onclick="window.print()" style="padding: 10px 20px; background: #1e3c72; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px;">🖨️ IMPRIMIR</button>
+                                <button onclick="window.close()" style="padding: 10px 20px; background: #f44336; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px;">❌ CERRAR</button>
+                            </div>
+                            <script>
+                                window.onload = function() {
+                                    // Auto-imprimir después de 1 segundo
+                                    setTimeout(function() {
+                                        window.print();
+                                    }, 1000);
+                                };
+                            <\/script>
+                        </body>
+                    </html>
+                `);
+                ventanaImpresion.document.close();
+                
+                mostrarMensaje('🖨️ Preparando para imprimir...', 'success');
+            } catch (error) {
+                console.error('Error al generar impresión:', error);
+                mostrarMensaje('❌ Error al preparar la impresión', 'error');
+            }
+        }
+        
+        // Inicializar la aplicación con pantalla de carga
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("📄 DOM cargado - Iniciando aplicación...");
+            // Mostrar pantalla de carga por 3 segundos
+            setTimeout(function() {
+                document.getElementById('loading-screen').style.display = 'none';
+                document.getElementById('main-system').style.display = 'block';
+                inicializarAplicacion();
+            }, 3000);
+        });
+        
+        // Event Listeners
+        document.getElementById('entrada-manana').addEventListener('click', () => registrarTurno('Mañana', 'Entrada'));
+        document.getElementById('salida-manana').addEventListener('click', () => registrarTurno('Mañana', 'Salida'));
+        document.getElementById('entrada-tarde').addEventListener('click', () => registrarTurno('Tarde', 'Entrada'));
+        document.getElementById('salida-tarde').addEventListener('click', () => registrarTurno('Tarde', 'Salida'));
+        
+        document.getElementById('descargar-excel').addEventListener('click', descargarExcel);
+        document.getElementById('renovar-hoja').addEventListener('click', renovarHoja);
+        document.getElementById('imprimir-excel').addEventListener('click', imprimirExcel);
+        document.getElementById('exportar-sistema').addEventListener('click', exportarSistema);
+        document.getElementById('importar-sistema').addEventListener('click', importarSistema);
+        document.getElementById('cambiar-usuario').addEventListener('click', cambiarUsuario);
+        document.getElementById('gestion-usuarios').addEventListener('click', gestionUsuarios);
+        document.getElementById('login-google').addEventListener('click', iniciarSesionGoogle);
+        document.getElementById('logout-google').addEventListener('click', cerrarSesionGoogle);
+        
+        document.getElementById('salario-hora').addEventListener('input', async () => {
+            const salarioHora = parseFloat(document.getElementById('salario-hora').value) || 0;
+            registros.forEach(registro => {
+                if (registro.tipo === 'Salida') {
+                    registro.total = registro.horas * salarioHora;
+                }
+            });
+            if (guardarEnLocalStorage('registros', registros)) {
+                
+                // Guardar en la nube si está autenticado
+                if (usuarioGoogle) {
+                    await guardarDatosEnLaNube();
+                }
+                
+                aplicarFiltros();
+            }
+        });
+        
+        // Event Listeners para filtros
+        document.getElementById('filtro-usuario').addEventListener('change', aplicarFiltros);
+        document.getElementById('filtro-fecha').addEventListener('change', aplicarFiltros);
+        
+        // Event Listeners para el modal de usuario
+        document.getElementById('crear-usuario').addEventListener('click', crearUsuario);
+        
+        // Event Listener para cerrar gestión de usuarios
+        document.getElementById('cerrar-gestion').addEventListener('click', () => {
+            document.getElementById('gestion-modal').style.display = 'none';
+        });
+        
+        // Cerrar modales al hacer clic fuera de ellos
+        window.addEventListener('click', (event) => {
+            const modales = ['usuario-modal', 'gestion-modal'];
+            
+            modales.forEach(modalId => {
+                const modal = document.getElementById(modalId);
+                if (event.target === modal) {
+                    if (modalId === 'usuario-modal' && !usuarioActual) {
+                        alert('Debes seleccionar o crear un usuario para usar la aplicación.');
+                        return;
+                    }
+                    modal.style.display = 'none';
+                }
+            });
+        });
+        
+        // Permitir crear usuario con Enter
+        document.getElementById('nuevo-usuario').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                crearUsuario();
+            }
+        });
     </script>
 </body>
 </html>
