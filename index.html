@@ -16,14 +16,14 @@
         
         // Configuración Firebase (PROTEGIDA - Reemplaza con tus datos)
         const firebaseConfig = {
-             apiKey: "AIzaSyDREED85Ig_NLyLEMzLtjRLwrYPZn1Em0g",
-             authDomain: "registro-binomio.firebaseapp.com",
-             projectId: "registro-binomio",
-             storageBucket: "registro-binomio.firebasestorage.app",
-             messagingSenderId: "1005145229027",
-             appId: "1:1005145229027:web:e8f6a5c7027d33ed7727d6",
-             measurementId: "G-TRYZPKQG0J"
-         };
+            apiKey: "AIzaSyDREED85Ig_NLyLEMzLtjRLwrYPZn1Em0g",
+            authDomain: "registro-binomio.firebaseapp.com",
+            projectId: "registro-binomio",
+            storageBucket: "registro-binomio.firebasestorage.app",
+            messagingSenderId: "1005145229027",
+            appId: "1:1005145229027:web:e8f6a5c7027d33ed7727d6",
+            measurementId: "G-TRYZPKQG0J"
+        };
         
         // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
@@ -926,7 +926,7 @@
         
         // Días de la semana en español
         const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-        const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+        const meses = ['Enero', 'Febrero', 'Marzo', 'Abri', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
         
         // Variables para optimización
         let isProcessing = false;
@@ -1078,11 +1078,16 @@
             }
             
             try {
+                // Obtener todos los días del mes actual
+                const diasCompletosDelMes = generarDiasCompletosDelMes();
+                
                 const datosSistema = {
                     usuarios: usuarios,
                     registros: registros,
                     usuarioActual: usuarioActual,
                     salarioHora: document.getElementById('salario-hora').value,
+                    // Incluir todos los días del mes en el JSON
+                    diasCompletosDelMes: diasCompletosDelMes,
                     fechaActualizacion: serverTimestamp()
                 };
                 
@@ -1375,51 +1380,74 @@
         // FUNCIONES DE TABLA Y FILTROS
         // ============================================
         
+        // Generar todos los días del mes actual
+        function generarDiasCompletosDelMes() {
+            const ahora = new Date();
+            const año = ahora.getFullYear();
+            const mes = ahora.getMonth() + 1;
+            const diasEnMes = new Date(año, mes, 0).getDate();
+            const diasCompletos = [];
+            
+            for (let dia = 1; dia <= diasEnMes; dia++) {
+                const fechaStr = `${año}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+                const fechaObj = new Date(año, mes - 1, dia);
+                const diaSemana = diasSemana[fechaObj.getDay()];
+                
+                // Buscar registros para este día
+                const registrosDia = registros.filter(r => 
+                    r.usuario === usuarioActual && 
+                    r.fecha === fechaStr
+                );
+                
+                // Crear objeto día completo
+                const diaCompleto = {
+                    fecha: fechaStr,
+                    diaSemana: diaSemana,
+                    mañana: { entrada: '', salida: '', horas: 0 },
+                    tarde: { entrada: '', salida: '', horas: 0 }
+                };
+                
+                // Llenar con datos si existen
+                registrosDia.forEach(registro => {
+                    if (registro.turno === 'Mañana') {
+                        diaCompleto.mañana.entrada = registro.entrada || '';
+                        diaCompleto.mañana.salida = registro.salida || '';
+                        diaCompleto.mañana.horas = registro.horas || 0;
+                    } else if (registro.turno === 'Tarde') {
+                        diaCompleto.tarde.entrada = registro.entrada || '';
+                        diaCompleto.tarde.salida = registro.salida || '';
+                        diaCompleto.tarde.horas = registro.horas || 0;
+                    }
+                });
+                
+                diasCompletos.push(diaCompleto);
+            }
+            
+            return diasCompletos;
+        }
+        
         // Actualizar tabla
         function actualizarTabla() {
             const tbody = document.getElementById('cuerpo-tabla');
             const filtroMes = document.getElementById('filtro-mes').value;
             
-            // Filtrar registros del usuario actual
-            let registrosUsuario = registros.filter(r => r.usuario === usuarioActual);
+            // Obtener todos los días del mes actual
+            const diasCompletos = generarDiasCompletosDelMes();
             
             // Filtrar por mes si se seleccionó
+            let diasMostrar = diasCompletos;
             if (filtroMes !== 'todos') {
-                registrosUsuario = registrosUsuario.filter(r => {
-                    const fechaReg = new Date(r.fecha);
-                    const mesReg = fechaReg.getMonth() + 1;
+                diasMostrar = diasCompletos.filter(dia => {
+                    const fechaObj = new Date(dia.fecha);
+                    const mesReg = fechaObj.getMonth() + 1;
                     return mesReg.toString() === filtroMes;
                 });
             }
             
-            // Agrupar por fecha
-            const registrosPorFecha = {};
-            
-            registrosUsuario.forEach(registro => {
-                if (!registrosPorFecha[registro.fecha]) {
-                    registrosPorFecha[registro.fecha] = {
-                        fecha: registro.fecha,
-                        diaSemana: registro.diaSemana,
-                        mañana: { entrada: '', salida: '', horas: 0 },
-                        tarde: { entrada: '', salida: '', horas: 0 }
-                    };
-                }
-                
-                if (registro.turno === 'Mañana') {
-                    registrosPorFecha[registro.fecha].mañana.entrada = registro.entrada;
-                    registrosPorFecha[registro.fecha].mañana.salida = registro.salida;
-                    registrosPorFecha[registro.fecha].mañana.horas = registro.horas || 0;
-                } else {
-                    registrosPorFecha[registro.fecha].tarde.entrada = registro.entrada;
-                    registrosPorFecha[registro.fecha].tarde.salida = registro.salida;
-                    registrosPorFecha[registro.fecha].tarde.horas = registro.horas || 0;
-                }
-            });
-            
             // Limpiar tabla
             tbody.innerHTML = '';
             
-            if (Object.keys(registrosPorFecha).length === 0) {
+            if (diasMostrar.length === 0) {
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="9" style="text-align: center; padding: 25px; color: var(--color-text-muted);">
@@ -1431,61 +1459,37 @@
                 return;
             }
             
-            // Ordenar fechas
-            const fechasOrdenadas = Object.keys(registrosPorFecha).sort();
-            
             let totalHoras = 0;
             let totalPagar = 0;
             const salarioHora = parseFloat(document.getElementById('salario-hora').value) || 8.50;
             
-            // Mostrar todos los días del mes actual
-            const ahora = new Date();
-            const añoActual = ahora.getFullYear();
-            const mesActual = ahora.getMonth() + 1;
-            const diasEnMes = new Date(añoActual, mesActual, 0).getDate();
-            
-            for (let dia = 1; dia <= diasEnMes; dia++) {
-                const fechaStr = `${añoActual}-${String(mesActual).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
-                const fechaObj = new Date(añoActual, mesActual - 1, dia);
-                const diaSemana = diasSemana[fechaObj.getDay()];
-                
-                let registro = registrosPorFecha[fechaStr];
-                
-                // Si no hay registro, mostrar fila vacía
-                if (!registro) {
-                    registro = {
-                        fecha: fechaStr,
-                        diaSemana: diaSemana,
-                        mañana: { entrada: '', salida: '', horas: 0 },
-                        tarde: { entrada: '', salida: '', horas: 0 }
-                    };
-                }
-                
-                const horasDia = registro.mañana.horas + registro.tarde.horas;
+            // Mostrar todos los días
+            diasMostrar.forEach(dia => {
+                const horasDia = dia.mañana.horas + dia.tarde.horas;
                 const totalDia = horasDia * salarioHora;
                 
                 totalHoras += horasDia;
                 totalPagar += totalDia;
                 
                 const fila = document.createElement('tr');
-                if (diaSemana === 'Domingo') {
+                if (dia.diaSemana === 'Domingo') {
                     fila.className = 'domingo';
                 }
                 
                 fila.innerHTML = `
-                    <td class="dia-semana">${registro.diaSemana}</td>
-                    <td>${registro.fecha}</td>
-                    <td>${registro.mañana.entrada || '-'}</td>
-                    <td>${registro.mañana.salida || '-'}</td>
-                    <td>${registro.mañana.horas > 0 ? registro.mañana.horas.toFixed(2) : '0.00'}</td>
-                    <td>${registro.tarde.entrada || '-'}</td>
-                    <td>${registro.tarde.salida || '-'}</td>
-                    <td>${registro.tarde.horas > 0 ? registro.tarde.horas.toFixed(2) : '0.00'}</td>
+                    <td class="dia-semana">${dia.diaSemana}</td>
+                    <td>${dia.fecha}</td>
+                    <td>${dia.mañana.entrada || '-'}</td>
+                    <td>${dia.mañana.salida || '-'}</td>
+                    <td>${dia.mañana.horas > 0 ? dia.mañana.horas.toFixed(2) : '0.00'}</td>
+                    <td>${dia.tarde.entrada || '-'}</td>
+                    <td>${dia.tarde.salida || '-'}</td>
+                    <td>${dia.tarde.horas > 0 ? dia.tarde.horas.toFixed(2) : '0.00'}</td>
                     <td><strong>$${totalDia.toFixed(2)}</strong></td>
                 `;
                 
                 tbody.appendChild(fila);
-            }
+            });
             
             // Actualizar resumen
             actualizarResumenPago(totalHoras, totalPagar);
@@ -1535,33 +1539,105 @@
         // FUNCIONES DE IMPORTACIÓN/EXPORTACIÓN
         // ============================================
         
-        // Exportar sistema
+        // Exportar sistema (INCLUYE TODOS LOS DÍAS)
         function exportarSistema() {
             if (isProcessing) return;
             isProcessing = true;
             
             try {
-                const datosSistema = {
+                // Obtener todos los días del mes actual
+                const diasCompletosDelMes = generarDiasCompletosDelMes();
+                
+                // Crear datos estructurados para exportación
+                const datosExportacion = {
+                    // Información del sistema
+                    metadata: {
+                        nombreSistema: "Sistema de Registro de Turnos - Editorial Binomio",
+                        fechaExportacion: new Date().toISOString(),
+                        version: "2.5",
+                        usuarioActual: usuarioActual,
+                        salarioHora: parseFloat(document.getElementById('salario-hora').value) || 8.50
+                    },
+                    
+                    // Usuarios del sistema
                     usuarios: usuarios,
-                    registros: registros,
-                    usuarioActual: usuarioActual,
-                    salarioHora: document.getElementById('salario-hora').value,
-                    fechaExportacion: new Date().toISOString()
+                    
+                    // Registros originales (datos crudos)
+                    registrosOriginales: registros,
+                    
+                    // DÍAS COMPLETOS DEL MES (INCLUYE DÍAS SIN TRABAJO)
+                    diasCompletosDelMes: diasCompletosDelMes,
+                    
+                    // Resumen del mes actual
+                    resumenMesActual: {
+                        totalHoras: 0,
+                        totalPagar: 0,
+                        diasTrabajados: 0,
+                        diasSinTrabajar: 0,
+                        diasDetalle: []
+                    }
                 };
                 
-                const datosJSON = JSON.stringify(datosSistema, null, 2);
+                // Calcular resumen
+                let totalHorasMes = 0;
+                let totalPagarMes = 0;
+                let diasTrabajados = 0;
+                
+                diasCompletosDelMes.forEach(dia => {
+                    const horasDia = dia.mañana.horas + dia.tarde.horas;
+                    const totalDia = horasDia * datosExportacion.metadata.salarioHora;
+                    
+                    totalHorasMes += horasDia;
+                    totalPagarMes += totalDia;
+                    
+                    const trabajoDia = {
+                        fecha: dia.fecha,
+                        diaSemana: dia.diaSemana,
+                        trabajoRealizado: horasDia > 0,
+                        horasTrabajadas: horasDia,
+                        totalDia: totalDia,
+                        detalle: {
+                            mañana: dia.mañana,
+                            tarde: dia.tarde
+                        }
+                    };
+                    
+                    datosExportacion.resumenMesActual.diasDetalle.push(trabajoDia);
+                    
+                    if (horasDia > 0) {
+                        diasTrabajados++;
+                    }
+                });
+                
+                const totalDiasMes = diasCompletosDelMes.length;
+                
+                datosExportacion.resumenMesActual.totalHoras = totalHorasMes;
+                datosExportacion.resumenMesActual.totalPagar = totalPagarMes;
+                datosExportacion.resumenMesActual.diasTrabajados = diasTrabajados;
+                datosExportacion.resumenMesActual.diasSinTrabajar = totalDiasMes - diasTrabajados;
+                
+                // Convertir a JSON
+                const datosJSON = JSON.stringify(datosExportacion, null, 2);
                 const blob = new Blob([datosJSON], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 
+                // Crear nombre de archivo
+                const ahora = new Date();
+                const año = ahora.getFullYear();
+                const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+                const nombreArchivo = `registro_turnos_${usuarioActual}_${año}_${mes}_completo.json`;
+                
+                // Descargar
                 const a = document.createElement('a');
                 a.href = url;
-                a.download = `sistema_turnos_${new Date().toISOString().split('T')[0]}.json`;
+                a.download = nombreArchivo;
                 document.body.appendChild(a);
                 a.click();
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 
-                mostrarMensaje('✅ Sistema exportado correctamente', 'success');
+                mostrarMensaje('✅ Sistema exportado con TODOS los días del mes', 'success');
+                
             } catch (error) {
                 console.error('Error al exportar:', error);
                 mostrarMensaje('❌ Error al exportar el sistema', 'error');
@@ -1589,39 +1665,62 @@
                 const reader = new FileReader();
                 reader.onload = async function(e) {
                     try {
-                        const datosSistema = JSON.parse(e.target.result);
+                        const datosImportados = JSON.parse(e.target.result);
                         
-                        if (!datosSistema.usuarios || !datosSistema.registros) {
-                            throw new Error('Archivo no válido');
+                        // Verificar que sea un archivo válido
+                        if (!datosImportados.usuarios || !datosImportados.registrosOriginales) {
+                            throw new Error('Archivo JSON no válido');
                         }
                         
                         if (confirm('¿Estás seguro de importar estos datos?\nSe sobrescribirán los datos actuales.')) {
-                            usuarios = datosSistema.usuarios;
-                            registros = datosSistema.registros;
-                            usuarioActual = datosSistema.usuarioActual;
+                            // Restaurar datos básicos
+                            usuarios = datosImportados.usuarios;
+                            registros = datosImportados.registrosOriginales;
+                            usuarioActual = datosImportados.metadata?.usuarioActual || usuarioActual;
                             
-                            if (datosSistema.salarioHora) {
-                                document.getElementById('salario-hora').value = datosSistema.salarioHora;
+                            // Restaurar salario por hora
+                            if (datosImportados.metadata?.salarioHora) {
+                                document.getElementById('salario-hora').value = datosImportados.metadata.salarioHora;
                             }
                             
+                            // Guardar en localStorage
                             guardarEnLocalStorage('usuarios', usuarios);
                             guardarEnLocalStorage('registros', registros);
                             guardarEnLocalStorage('usuarioActual', usuarioActual);
                             
+                            // Guardar en la nube si hay sesión activa
                             if (usuarioGoogle) {
                                 await guardarDatosEnLaNube();
                             }
                             
+                            // Actualizar interfaz
                             if (usuarioActual) {
                                 actualizarDisplayUsuario();
                             }
                             
                             actualizarTabla();
+                            
+                            // Mostrar resumen de importación
+                            let mensajeImportacion = '✅ Sistema importado correctamente\n';
+                            
+                            if (datosImportados.resumenMesActual) {
+                                mensajeImportacion += `\n📊 Resumen del mes:\n`;
+                                mensajeImportacion += `- Días trabajados: ${datosImportados.resumenMesActual.diasTrabajados}\n`;
+                                mensajeImportacion += `- Días sin trabajar: ${datosImportados.resumenMesActual.diasSinTrabajar}\n`;
+                                mensajeImportacion += `- Total horas: ${datosImportados.resumenMesActual.totalHoras.toFixed(2)}\n`;
+                                mensajeImportacion += `- Total a pagar: $${datosImportados.resumenMesActual.totalPagar.toFixed(2)}`;
+                            }
+                            
+                            // Mostrar alerta con resumen
+                            setTimeout(() => {
+                                alert(mensajeImportacion);
+                            }, 500);
+                            
                             mostrarMensaje('✅ Sistema importado correctamente', 'success');
                         }
                     } catch (error) {
                         console.error('Error al importar:', error);
-                        mostrarMensaje('❌ Error al importar el sistema', 'error');
+                        mostrarMensaje('❌ Error al importar el archivo JSON', 'error');
                     } finally {
                         isProcessing = false;
                     }
