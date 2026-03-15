@@ -2,19 +2,21 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>REGISTRO DE TURNO EDITORIAL BINOMIO</title>
-    <meta name="description" content="Sistema multi-usuario para registro de turnos">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>REGISTRO DE TURNO · EDITORIAL BINOMIO</title>
+    <meta name="description" content="Sistema multi‑usuario para registro de turnos mañana/tarde – almacenamiento en la nube y control total">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- Firebase SDK -->
+    
+    <!-- Firebase SDK completo (incluye FCM) -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
         
-        // Configuración Firebase (PROTEGIDA - Reemplaza con tus datos)
+        // Configuración Firebase (activa - reemplazar con credenciales propias en producción)
         const firebaseConfig = {
             apiKey: "AIzaSyDREED85Ig_NLyLEMzLtjRLwrYPZn1Em0g",
             authDomain: "registro-binomio.firebaseapp.com",
@@ -25,14 +27,15 @@
             measurementId: "G-TRYZPKQG0J"
         };
         
-        // Inicializar Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const messaging = getMessaging(app);
         
-        // Hacer disponibles globalmente
+        // Exponer globalmente
         window.firebaseAuth = auth;
         window.firebaseDb = db;
+        window.firebaseMessaging = messaging;
         window.GoogleAuthProvider = GoogleAuthProvider;
         window.signInWithPopup = signInWithPopup;
         window.signOut = signOut;
@@ -41,7 +44,10 @@
         window.firebaseSetDoc = setDoc;
         window.firebaseGetDoc = getDoc;
         window.serverTimestamp = serverTimestamp;
+        window.getToken = getToken;
+        window.onMessage = onMessage;
     </script>
+    
     <style>
         :root {
             --color-primary: #121212;
@@ -83,7 +89,6 @@
             padding: 16px;
         }
         
-        /* Header */
         header {
             background: var(--color-secondary);
             border-radius: var(--radius);
@@ -108,7 +113,6 @@
             margin-bottom: 24px;
         }
         
-        /* User Info */
         .user-info {
             background: var(--color-tertiary);
             border-radius: var(--radius);
@@ -127,7 +131,6 @@
             border: 1px solid rgba(76, 175, 80, 0.3);
         }
         
-        /* Current Time */
         .current-time {
             text-align: center;
             margin: 24px 0;
@@ -140,7 +143,6 @@
             border: 1px solid rgba(255, 152, 0, 0.3);
         }
         
-        /* Cards */
         .card {
             background: var(--color-secondary);
             border-radius: var(--radius);
@@ -161,7 +163,6 @@
             gap: 12px;
         }
         
-        /* Turn Buttons */
         .turn-buttons {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
@@ -245,7 +246,31 @@
             color: white;
         }
         
-        /* Actions Grid */
+        .btn-limpiar-mes {
+            background: linear-gradient(135deg, #8B0000 0%, #B22222 100%);
+            color: white;
+            border: 2px solid rgba(255, 69, 0, 0.5);
+        }
+        
+        .btn-sonido {
+            background: linear-gradient(135deg, #FF6B6B 0%, #FF4949 100%);
+            color: white;
+        }
+        
+        /* BOTÓN ESPECIAL PARA FCM */
+        .btn-fcm {
+            background: linear-gradient(135deg, #075E54 0%, #128C7E 100%);
+            color: white;
+            border: 2px solid rgba(37, 211, 102, 0.5);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(37, 211, 102, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
+        }
+        
         .actions {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -259,7 +284,6 @@
             }
         }
         
-        /* Forms */
         .form-group {
             margin-bottom: 20px;
         }
@@ -289,7 +313,6 @@
             background: var(--color-secondary);
         }
         
-        /* Status Messages */
         .status {
             text-align: center;
             padding: 16px;
@@ -312,7 +335,6 @@
             color: #FFCDD2;
         }
         
-        /* Table */
         .registros {
             margin-top: 24px;
             overflow-x: auto;
@@ -361,7 +383,6 @@
             font-style: italic;
         }
         
-        /* Loading Screen */
         .loading-screen {
             position: fixed;
             top: 0;
@@ -391,7 +412,6 @@
             to { transform: rotate(360deg); }
         }
         
-        /* Modals */
         .modal {
             display: none;
             position: fixed;
@@ -463,7 +483,6 @@
             transform: translateY(-2px);
         }
         
-        /* Developer Panel */
         .dev-panel {
             background: linear-gradient(135deg, #1a1a1a 0%, #2a2a2a 100%);
             border-radius: var(--radius);
@@ -533,7 +552,6 @@
             transform: translateY(-2px);
         }
         
-        /* Password Modal */
         .password-modal {
             display: none;
             position: fixed;
@@ -607,7 +625,6 @@
             color: white;
         }
         
-        /* Cloud Status */
         .cloud-status {
             display: flex;
             align-items: center;
@@ -632,7 +649,6 @@
             color: #FFCDD2;
         }
         
-        /* Footer */
         footer {
             text-align: center;
             margin-top: 40px;
@@ -644,7 +660,6 @@
             border: 1px solid var(--color-border);
         }
         
-        /* Responsive Improvements */
         @media (max-width: 768px) {
             .container {
                 padding: 12px;
@@ -686,23 +701,544 @@
             }
         }
         
-        /* Touch optimizations */
         @media (hover: none) {
             .btn:hover, .modal-btn:hover, .dev-btn:hover {
                 transform: none;
             }
         }
+        
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 999999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-width: 400px;
+            width: calc(100% - 40px);
+            pointer-events: none;
+        }
+        
+        .duo-notification {
+            background: rgba(30, 30, 30, 0.95);
+            backdrop-filter: blur(10px);
+            border-left: 6px solid var(--notification-color);
+            border-radius: 20px;
+            padding: 20px 18px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.05);
+            transform: translateX(120%) scale(0.8);
+            opacity: 0;
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            pointer-events: auto;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .duo-notification.show {
+            transform: translateX(0) scale(1);
+            opacity: 1;
+        }
+        
+        .duo-notification.hiding {
+            transform: translateX(120%) scale(0.8);
+            opacity: 0;
+        }
+        
+        .notification-progress {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            height: 4px;
+            background: var(--notification-color);
+            width: 100%;
+            transform-origin: left;
+            animation: progressShrink 10s linear forwards;
+            opacity: 0.5;
+        }
+        
+        @keyframes progressShrink {
+            from { transform: scaleX(1); }
+            to { transform: scaleX(0); }
+        }
+        
+        .notification-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        
+        .notification-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--notification-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+            color: white;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .notification-category {
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--notification-color);
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+        
+        .notification-title {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--color-text-light);
+            margin-left: auto;
+            opacity: 0.7;
+            background: rgba(255,255,255,0.1);
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+        
+        .notification-content {
+            font-size: 1rem;
+            line-height: 1.5;
+            color: var(--color-text);
+            padding-right: 15px;
+            font-weight: 400;
+        }
+        
+        .notification-emoji {
+            position: absolute;
+            bottom: 10px;
+            right: 15px;
+            font-size: 3rem;
+            opacity: 0.15;
+            transform: rotate(5deg);
+            pointer-events: none;
+        }
+        
+        .notification-time {
+            margin-top: 12px;
+            font-size: 0.8rem;
+            color: var(--color-text-muted);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .notification-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: var(--notification-color);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-left: 8px;
+        }
+        
+        @keyframes bounceIn {
+            0% { transform: translateX(120%) scale(0.8); opacity: 0; }
+            50% { transform: translateX(-10px) scale(1.05); opacity: 0.9; }
+            80% { transform: translateX(5px) scale(0.98); }
+            100% { transform: translateX(0) scale(1); opacity: 1; }
+        }
+        
+        .duo-notification.special {
+            animation: bounceIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+        
+        .contador-registro {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.9);
+            background: linear-gradient(135deg, var(--color-secondary) 0%, var(--color-tertiary) 100%);
+            border-radius: 30px;
+            padding: 30px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 2px rgba(76, 175, 80, 0.3);
+            z-index: 1000000;
+            text-align: center;
+            min-width: 320px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+        
+        .contador-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .contador-icono {
+            font-size: 3rem;
+            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
+        }
+        
+        .contador-titulo {
+            color: var(--color-text-light);
+            font-size: 1.5rem;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .contador-info {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .contador-turno {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+        
+        .contador-fecha {
+            font-size: 1rem;
+            color: var(--color-text-muted);
+        }
+        
+        .contador-numero {
+            font-size: 5rem;
+            font-weight: 900;
+            line-height: 1;
+            margin: 15px 0;
+            color: var(--color-warning);
+            text-shadow: 0 0 20px rgba(255, 152, 0, 0.5);
+            transition: all 0.1s ease;
+        }
+        
+        .contador-barra {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+        
+        .contador-progreso {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, var(--color-accent) 0%, var(--color-warning) 100%);
+            border-radius: 10px;
+            transition: width 1s linear;
+        }
+        
+        .contador-botones {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .contador-btn {
+            flex: 1;
+            padding: 15px;
+            border: none;
+            border-radius: 15px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .contador-btn.cancelar {
+            background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%);
+            color: white;
+        }
+        
+        .contador-btn.confirmar {
+            background: linear-gradient(135deg, var(--color-accent) 0%, var(--color-accent-dark) 100%);
+            color: white;
+        }
+        
+        .contador-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
+        
+        .contador-ayuda {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: var(--color-text-muted);
+        }
+        
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Source+Sans+Pro:wght@400;600&display=swap');
+        
+        .doodle-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 99999;
+            overflow: hidden;
+            animation: doodleEnter 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .doodle-background {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, #0f3460 0%, #16213e 50%, #1a1a2e 100%);
+            overflow: hidden;
+        }
+
+        .gradient-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(100px);
+            opacity: 0.4;
+            animation: orbFloat 25s infinite ease-in-out;
+        }
+
+        .orb-1 {
+            width: 700px;
+            height: 700px;
+            background: radial-gradient(circle, rgba(233, 69, 96, 0.3) 0%, transparent 70%);
+            top: -300px;
+            right: -200px;
+            animation-delay: 0s;
+        }
+
+        .orb-2 {
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(15, 52, 96, 0.5) 0%, transparent 70%);
+            bottom: -200px;
+            left: -200px;
+            animation-delay: -8s;
+        }
+
+        .orb-3 {
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(255, 215, 0, 0.2) 0%, transparent 70%);
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            animation-delay: -15s;
+        }
+
+        .doodle-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: all;
+            cursor: crosshair;
+        }
+
+        .doodle-ui {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            pointer-events: none;
+            width: 90%;
+            max-width: 900px;
+        }
+
+        .editorial-container {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+            margin-bottom: 1rem;
+        }
+
+        .doodle-letter {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(2.5rem, 8vw, 5rem);
+            font-weight: 700;
+            color: #ffffff;
+            text-shadow: 0 4px 30px rgba(0,0,0,0.3);
+            opacity: 0;
+            transform: translateY(80px) rotateX(-90deg);
+            animation: letterDrop 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            animation-delay: var(--delay);
+            display: inline-block;
+        }
+
+        .doodle-letter:nth-child(1) { color: #e94560; animation-delay: 0s; }
+        .doodle-letter:nth-child(2) { color: #ffffff; animation-delay: 0.08s; }
+        .doodle-letter:nth-child(3) { color: #e94560; animation-delay: 0.16s; }
+        .doodle-letter:nth-child(4) { color: #ffffff; animation-delay: 0.24s; }
+        .doodle-letter:nth-child(5) { color: #e94560; animation-delay: 0.32s; }
+        .doodle-letter:nth-child(6) { color: #ffffff; animation-delay: 0.40s; }
+        .doodle-letter:nth-child(7) { color: #e94560; animation-delay: 0.48s; }
+        .doodle-letter:nth-child(8) { color: #ffffff; animation-delay: 0.56s; }
+        .doodle-letter:nth-child(9) { color: #e94560; animation-delay: 0.64s; }
+
+        .doodle-space {
+            width: 1.5rem;
+        }
+
+        .binomio-container {
+            display: flex;
+            align-items: baseline;
+            gap: 0.2rem;
+            margin-top: -0.5rem;
+        }
+
+        .binomio-letter {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(3rem, 10vw, 6rem);
+            font-weight: 900;
+            opacity: 0;
+            transform: scale(0.5) rotateY(90deg);
+            animation: binomioEnter 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            animation-delay: var(--delay);
+            display: inline-block;
+            letter-spacing: -2px;
+        }
+
+        .binomio-letter:nth-child(1) { color: #ffd700; text-shadow: 0 0 40px rgba(255, 215, 0, 0.5); animation-delay: 0.8s; }
+        .binomio-letter:nth-child(2) { color: #ffffff; animation-delay: 0.9s; }
+        .binomio-letter:nth-child(3) { color: #ffd700; text-shadow: 0 0 40px rgba(255, 215, 0, 0.5); animation-delay: 1.0s; }
+        .binomio-letter:nth-child(4) { color: #ffffff; animation-delay: 1.1s; }
+        .binomio-letter:nth-child(5) { color: #ffd700; text-shadow: 0 0 40px rgba(255, 215, 0, 0.5); animation-delay: 1.2s; }
+        .binomio-letter:nth-child(6) { color: #ffffff; animation-delay: 1.3s; }
+        .binomio-letter:nth-child(7) { color: #ffd700; text-shadow: 0 0 40px rgba(255, 215, 0, 0.5); animation-delay: 1.4s; }
+
+        .festividad-badge {
+            margin-top: 2rem;
+            padding: 1rem 2rem;
+            background: rgba(233, 69, 96, 0.2);
+            border: 2px solid rgba(233, 69, 96, 0.5);
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            opacity: 0;
+            transform: translateY(30px);
+            animation: badgeEnter 0.8s ease 1.6s forwards;
+        }
+
+        .festividad-texto {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(1.2rem, 4vw, 2rem);
+            color: #ffd700;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .festividad-sub {
+            font-family: 'Source Sans Pro', sans-serif;
+            font-size: 0.9rem;
+            color: rgba(255,255,255,0.7);
+            margin-top: 0.3rem;
+            text-align: center;
+        }
+
+        .doodle-close {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05);
+            backdrop-filter: blur(10px);
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .doodle-close:hover {
+            background: rgba(233, 69, 96, 0.3);
+            border-color: rgba(233, 69, 96, 0.5);
+            transform: rotate(90deg) scale(1.1);
+        }
+
+        .doodle-share {
+            position: absolute;
+            bottom: 2rem;
+            right: 2rem;
+            padding: 0.875rem 1.75rem;
+            border-radius: 30px;
+            border: 2px solid rgba(255,215,0,0.3);
+            background: rgba(255,215,0,0.1);
+            backdrop-filter: blur(10px);
+            color: #ffd700;
+            font-family: 'Source Sans Pro', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            z-index: 20;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            letter-spacing: 1px;
+        }
+
+        .doodle-share:hover {
+            background: rgba(255,215,0,0.2);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 30px rgba(255,215,0,0.2);
+        }
+
+        @keyframes doodleEnter {
+            from { opacity: 0; transform: scale(1.1); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes letterDrop {
+            to { opacity: 1; transform: translateY(0) rotateX(0); }
+        }
+
+        @keyframes binomioEnter {
+            0% { opacity: 0; transform: scale(0.5) rotateY(90deg); }
+            50% { opacity: 0.8; transform: scale(1.1) rotateY(-10deg); }
+            100% { opacity: 1; transform: scale(1) rotateY(0); }
+        }
+
+        @keyframes badgeEnter {
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes orbFloat {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            33% { transform: translate(40px, -40px) scale(1.1); }
+            66% { transform: translate(-30px, 30px) scale(0.9); }
+        }
     </style>
 </head>
 <body>
-    <!-- Pantalla de carga -->
     <div class="loading-screen" id="loading-screen">
         <div class="loading-spinner"></div>
         <div style="font-size: clamp(1.2rem, 3vw, 1.8rem); font-weight: 700; margin-bottom: 10px;">SISTEMA DE REGISTRO</div>
         <div style="color: var(--color-text-muted); text-align: center;">Cargando...</div>
     </div>
 
-    <!-- Modal para contraseña de desarrollador -->
     <div class="password-modal" id="password-modal">
         <div class="password-content">
             <h3>🔐 ACCESO DESARROLLADOR</h3>
@@ -752,10 +1288,23 @@
                         <button class="btn" id="toggle-dev" style="background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 100%);">
                             <i class="fas fa-code"></i> Desarrollador
                         </button>
+                        <button class="btn btn-sonido" id="toggle-sound" style="background: linear-gradient(135deg, #FF6B6B 0%, #FF4949 100%);">
+                            <i class="fas fa-volume-up"></i> Sonidos
+                        </button>
+                        <!-- NUEVO BOTÓN FCM -->
+                        <button class="btn btn-fcm" id="activar-fcm">
+                            <i class="fas fa-bell"></i> ACTIVAR NOTIFICACIONES
+                        </button>
                     </div>
                     
                     <div id="cloud-status" class="cloud-status cloud-disconnected">
                         <i class="fas fa-cloud"></i> <span id="cloud-status-text">Desconectado</span>
+                    </div>
+                    
+                    <!-- ESTADO DE NOTIFICACIONES -->
+                    <div id="fcm-status" style="display: none; text-align: center; padding: 10px; border-radius: 8px; background: rgba(37, 211, 102, 0.1); border: 1px solid #25D366;">
+                        <i class="fas fa-check-circle" style="color: #25D366;"></i>
+                        <span id="fcm-status-text" style="color: #25D366; font-weight: bold;">Notificaciones activadas</span>
                     </div>
                 </div>
             </div>
@@ -764,7 +1313,6 @@
         <div class="current-time" id="current-time"></div>
         
         <div class="main-content">
-            <!-- Panel de Desarrollador -->
             <div class="dev-panel" id="dev-panel">
                 <h3><i class="fas fa-code"></i> PANEL DE DESARROLLADOR</h3>
                 <p style="text-align: center; margin-bottom: 20px; color: var(--color-text-muted);">
@@ -819,6 +1367,13 @@
                     </button>
                     <button class="btn btn-importar" id="importar-sistema">
                         <i class="fas fa-file-import"></i> Importar JSON
+                    </button>
+                    <button class="btn btn-limpiar-mes" id="limpiar-mes-actual">
+                        <i class="fas fa-trash-alt"></i> Limpiar mes actual
+                    </button>
+                    <!-- BOTÓN DE PRUEBA DE NOTIFICACIÓN -->
+                    <button class="btn btn-info" id="probar-notificacion" style="background: linear-gradient(135deg, #25D366, #128C7E);">
+                        <i class="fas fa-bell"></i> PROBAR NOTIFICACIÓN
                     </button>
                 </div>
                 
@@ -882,12 +1437,12 @@
             <p>Sistema de Registro de Turnos - Editorial Binomio</p>
             <p style="margin-top: 10px; font-size: 0.85rem; color: var(--color-text-muted);">
                 <i class="fas fa-user-tie"></i> Desarrollado por: Marco Maidana | 
-                <i class="fas fa-cloud"></i> Almacenamiento en la nube: Firebase
+                <i class="fas fa-cloud"></i> Almacenamiento en la nube: Firebase |
+                <i class="fas fa-bell"></i> Notificaciones FCM
             </p>
         </footer>
     </div>
 
-    <!-- Modal para selección de usuario -->
     <div class="modal" id="usuario-modal">
         <div class="modal-content">
             <h3><i class="fas fa-user"></i> Seleccionar Usuario</h3>
@@ -909,33 +1464,43 @@
         </div>
     </div>
 
+    <div class="modal" id="confirmar-limpiar-modal">
+        <div class="modal-content">
+            <h3><i class="fas fa-exclamation-triangle" style="color: var(--color-danger);"></i> LIMPIAR MES</h3>
+            <p style="color: var(--color-text); margin-bottom: 20px; text-align: center; font-size: 1.1rem;">
+                ¿Estás seguro de eliminar TODOS los registros del mes actual para el usuario <strong id="usuario-limpiar"></strong>?
+            </p>
+            <p style="color: var(--color-text-muted); margin-bottom: 20px; text-align: center;">
+                Esta acción no se puede deshacer. Se recomienda exportar antes.
+            </p>
+            <div class="modal-buttons">
+                <button class="modal-btn confirm" id="confirmar-limpiar-si">SÍ, LIMPIAR</button>
+                <button class="modal-btn cancel" id="confirmar-limpiar-no">CANCELAR</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ============================================
-        // SISTEMA PRINCIPAL - OPTIMIZADO PARA TODOS LOS DISPOSITIVOS
+        // SISTEMA PRINCIPAL CON FIREBASE CLOUD MESSAGING
         // ============================================
         
-        // Configuración del sistema
         let usuarios = [];
         let usuarioActual = null;
         let registros = [];
         let usuarioGoogle = null;
         let datosEnLaNube = false;
-        
-        // Contraseña de desarrollador
-        const PASSWORD_DEVELOPER = "menuruchan2";
-        
-        // Días de la semana en español
-        const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-        const meses = ['Enero', 'Febrero', 'Marzo', 'Abri', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-        
-        // Variables para optimización
         let isProcessing = false;
+        let fcmToken = null;
+        
+        const PASSWORD_DEVELOPER = "menuruchan2";
+        const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+        const meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
         
         // ============================================
         // FUNCIONES PRINCIPALES
         // ============================================
         
-        // Obtener fecha y hora actual
         function obtenerFechaHora() {
             const ahora = new Date();
             const año = ahora.getFullYear();
@@ -948,7 +1513,6 @@
             return { fecha, hora, diaSemana };
         }
         
-        // Actualizar hora en pantalla
         function actualizarHora() {
             const ahora = new Date();
             const opciones = { 
@@ -964,7 +1528,6 @@
                 `🕒 ${ahora.toLocaleDateString('es-ES', opciones)}`;
         }
         
-        // Guardar en localStorage
         function guardarEnLocalStorage(clave, valor) {
             try {
                 localStorage.setItem(clave, JSON.stringify(valor));
@@ -975,7 +1538,6 @@
             }
         }
         
-        // Cargar desde localStorage
         function cargarDesdeLocalStorage(clave, valorPorDefecto) {
             try {
                 const valor = localStorage.getItem(clave);
@@ -986,15 +1548,12 @@
             }
         }
         
-        // Mostrar mensaje de estado
         function mostrarMensaje(texto, tipo = 'success') {
             const elemento = document.getElementById('status-message');
             elemento.textContent = texto;
             elemento.className = 'status';
             elemento.classList.add(tipo === 'success' ? 'status-success' : 'status-error');
             elemento.style.display = 'block';
-            
-            // Scroll suave al mensaje
             elemento.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             
             setTimeout(() => {
@@ -1002,7 +1561,6 @@
             }, 3000);
         }
         
-        // Actualizar estado de la nube
         function actualizarEstadoNube(conectado, mensaje = '') {
             const cloudStatus = document.getElementById('cloud-status');
             const cloudStatusText = document.getElementById('cloud-status-text');
@@ -1017,10 +1575,263 @@
         }
         
         // ============================================
-        // FUNCIONES DE FIREBASE
+        // FUNCIONES DE FIREBASE CLOUD MESSAGING
         // ============================================
         
-        // Iniciar sesión con Google
+        async function activarFirebaseCloudMessaging() {
+            try {
+                console.log('📱 Solicitando permiso para notificaciones...');
+                
+                // Verificar si el navegador soporta notificaciones
+                if (!('Notification' in window)) {
+                    alert('❌ Este navegador no soporta notificaciones');
+                    return;
+                }
+                
+                // Solicitar permiso
+                const permission = await Notification.requestPermission();
+                
+                if (permission === 'granted') {
+                    console.log('✅ Permiso concedido');
+                    
+                    // Obtener token FCM
+                    const token = await getToken(window.firebaseMessaging, {
+                        vapidKey: 'BGe9XZRq2j6YsUnnTvK2MqvZ_t8w2y3Q4R5T6Y7U8I9O0P1A2S3D4F5G6H7J8K9L0'
+                    });
+                    
+                    if (token) {
+                        fcmToken = token;
+                        console.log('✅ Token FCM:', token);
+                        
+                        // Guardar token en localStorage
+                        localStorage.setItem('fcm_token', token);
+                        
+                        // Mostrar estado
+                        document.getElementById('fcm-status').style.display = 'block';
+                        document.getElementById('fcm-status-text').textContent = '✅ Notificaciones activadas';
+                        
+                        // Ocultar botón de activación
+                        document.getElementById('activar-fcm').style.display = 'none';
+                        
+                        mostrarMensaje('✅ Notificaciones activadas correctamente', 'success');
+                        
+                        // Enviar token al servidor (si hay usuario autenticado)
+                        if (usuarioGoogle) {
+                            await guardarTokenEnFirestore(token);
+                        }
+                        
+                        // Escuchar mensajes en primer plano
+                        onMessage(window.firebaseMessaging, (payload) => {
+                            console.log('📩 Notificación recibida:', payload);
+                            
+                            // Mostrar notificación personalizada
+                            const notification = new Notification(payload.notification?.title || 'Editorial Binomio', {
+                                body: payload.notification?.body || 'Tienes una nueva notificación',
+                                icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23FF9800\'/%3E%3Ctext x=\'50\' y=\'70\' font-size=\'70\' text-anchor=\'middle\' fill=\'white\'%3E📊%3C/text%3E%3C/svg%3E',
+                                badge: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Ccircle cx=\'12\' cy=\'12\' r=\'10\' fill=\'%23FF9800\'/%3E%3C/svg%3E',
+                                vibrate: [200, 100, 200],
+                                tag: payload.data?.tag || 'fcm',
+                                renotify: true,
+                                silent: false,
+                                actions: payload.data?.actions ? JSON.parse(payload.data.actions) : [
+                                    {
+                                        action: 'abrir',
+                                        title: '📝 ABRIR'
+                                    }
+                                ]
+                            });
+                            
+                            notification.onclick = (event) => {
+                                if (event.action === 'abrir') {
+                                    window.focus();
+                                }
+                                notification.close();
+                            };
+                        });
+                        
+                        // Configurar recordatorios automáticos
+                        configurarRecordatoriosAutomaticos();
+                        
+                    } else {
+                        console.error('❌ No se pudo obtener el token');
+                        mostrarMensaje('❌ Error al obtener token de notificaciones', 'error');
+                    }
+                } else {
+                    console.warn('⚠️ Permiso denegado');
+                    mostrarMensaje('❌ Permiso denegado para notificaciones', 'error');
+                }
+            } catch (error) {
+                console.error('Error en FCM:', error);
+                mostrarMensaje('❌ Error: ' + error.message, 'error');
+            }
+        }
+        
+        async function guardarTokenEnFirestore(token) {
+            try {
+                const tokenRef = firebaseDoc(window.firebaseDb, 'fcm_tokens', usuarioGoogle.uid);
+                await firebaseSetDoc(tokenRef, {
+                    token: token,
+                    usuario: usuarioActual,
+                    email: usuarioGoogle.email,
+                    fecha: serverTimestamp(),
+                    dispositivo: navigator.userAgent
+                });
+                console.log('✅ Token guardado en Firestore');
+            } catch (error) {
+                console.error('Error guardando token:', error);
+            }
+        }
+        
+        function configurarRecordatoriosAutomaticos() {
+            console.log('⏰ Configurando recordatorios automáticos...');
+            
+            setInterval(() => {
+                const ahora = new Date();
+                const hora = ahora.getHours();
+                const minutos = ahora.getMinutes();
+                const diaSemana = ahora.getDay();
+                
+                // No enviar fines de semana
+                if (diaSemana === 0 || diaSemana === 6) return;
+                
+                // Recordatorio entrada mañana (9:30 AM)
+                if (hora === 9 && minutos === 30) {
+                    if (!verificarRegistroHoy('Mañana', 'Entrada')) {
+                        enviarNotificacionFCM(
+                            '🌅 BUENOS DÍAS',
+                            '¿Ya registraste tu entrada? El búho te espera',
+                            'recordatorio-entrada'
+                        );
+                    }
+                }
+                
+                // Recordatorio salida mañana (1:00 PM)
+                if (hora === 13 && minutos === 0) {
+                    if (verificarRegistroHoy('Mañana', 'Entrada') && !verificarRegistroHoy('Mañana', 'Salida')) {
+                        enviarNotificacionFCM(
+                            '🍽️ HORA DE ALMUERZO',
+                            'No olvides registrar tu salida antes de almorzar',
+                            'recordatorio-salida-manana'
+                        );
+                    }
+                }
+                
+                // Recordatorio entrada tarde (2:30 PM)
+                if (hora === 14 && minutos === 30) {
+                    if (!verificarRegistroHoy('Tarde', 'Entrada')) {
+                        enviarNotificacionFCM(
+                            '☀️ BUENAS TARDES',
+                            'La tarde ya comenzó. Registra tu entrada',
+                            'recordatorio-entrada-tarde'
+                        );
+                    }
+                }
+                
+                // Recordatorio salida tarde (7:00 PM)
+                if (hora === 19 && minutos === 0) {
+                    if (verificarRegistroHoy('Tarde', 'Entrada') && !verificarRegistroHoy('Tarde', 'Salida')) {
+                        enviarNotificacionFCM(
+                            '🌙 FIN DE JORNADA',
+                            'Registra tu salida antes de irte a casa',
+                            'recordatorio-salida-tarde'
+                        );
+                    }
+                }
+                
+                // Recordatorio fin de mes (últimos 3 días)
+                const ultimoDia = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).getDate();
+                const diasRestantes = ultimoDia - ahora.getDate();
+                
+                if (diasRestantes >= 0 && diasRestantes <= 3 && hora === 10 && minutos === 0) {
+                    const mesActual = meses[ahora.getMonth()];
+                    enviarNotificacionFCM(
+                        diasRestantes === 0 ? '🚨 ÚLTIMO DÍA DEL MES' : '📆 FIN DE MES PRÓXIMO',
+                        diasRestantes === 0 
+                            ? `Hoy termina ${mesActual}. Exporta tus registros`
+                            : `Quedan ${diasRestantes} días para que termine ${mesActual}`,
+                        'recordatorio-fin-mes',
+                        [
+                            {
+                                action: 'exportar',
+                                title: '📤 EXPORTAR'
+                            }
+                        ]
+                    );
+                }
+            }, 60000); // Revisar cada minuto
+        }
+        
+        function verificarRegistroHoy(turno, tipo) {
+            const hoy = new Date().toISOString().split('T')[0];
+            return registros.some(r => 
+                r.usuario === usuarioActual &&
+                r.fecha === hoy &&
+                r.turno === turno &&
+                (tipo === 'Entrada' ? r.entrada : r.salida)
+            );
+        }
+        
+        function enviarNotificacionFCM(titulo, mensaje, tag, acciones = []) {
+            if (!fcmToken) {
+                console.log('📱 FCM no activado, usando notificación web normal');
+                mostrarNotificacionWeb(titulo, mensaje, tag, acciones);
+                return;
+            }
+            
+            try {
+                const notification = new Notification(titulo, {
+                    body: mensaje,
+                    icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23FF9800\'/%3E%3Ctext x=\'50\' y=\'70\' font-size=\'70\' text-anchor=\'middle\' fill=\'white\'%3E📊%3C/text%3E%3C/svg%3E',
+                    badge: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Ccircle cx=\'12\' cy=\'12\' r=\'10\' fill=\'%23FF9800\'/%3E%3C/svg%3E',
+                    vibrate: [200, 100, 200],
+                    tag: tag,
+                    renotify: true,
+                    silent: false,
+                    actions: acciones.length ? acciones : [
+                        {
+                            action: 'abrir',
+                            title: '📝 ABRIR'
+                        }
+                    ]
+                });
+                
+                notification.onclick = (event) => {
+                    if (event.action === 'exportar') {
+                        exportarSistema();
+                    } else if (event.action === 'abrir') {
+                        window.focus();
+                    }
+                    notification.close();
+                };
+                
+                console.log('✅ Notificación enviada:', titulo);
+            } catch (error) {
+                console.error('Error enviando notificación:', error);
+            }
+        }
+        
+        function mostrarNotificacionWeb(titulo, mensaje, tag, acciones = []) {
+            // Notificación web normal (fallback)
+            try {
+                const notification = new Notification(titulo, {
+                    body: mensaje,
+                    icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23FF9800\'/%3E%3Ctext x=\'50\' y=\'70\' font-size=\'70\' text-anchor=\'middle\' fill=\'white\'%3E📊%3C/text%3E%3C/svg%3E',
+                    tag: tag
+                });
+                
+                notification.onclick = () => {
+                    window.focus();
+                    notification.close();
+                };
+            } catch (error) {
+                console.log('No se pudo mostrar notificación');
+            }
+        }
+        
+        // ============================================
+        // FUNCIONES DE FIREBASE AUTH Y FIRESTORE
+        // ============================================
+        
         async function iniciarSesionGoogle() {
             if (isProcessing) return;
             isProcessing = true;
@@ -1037,6 +1848,11 @@
                 document.getElementById('logout-google').style.display = 'flex';
                 
                 await cargarDatosDesdeLaNube();
+                
+                // Guardar token FCM si existe
+                if (fcmToken) {
+                    await guardarTokenEnFirestore(fcmToken);
+                }
             } catch (error) {
                 console.error('Error al iniciar sesión:', error);
                 mostrarMensaje('❌ Error al iniciar sesión con Google', 'error');
@@ -1045,7 +1861,6 @@
             }
         }
         
-        // Cerrar sesión Google
         async function cerrarSesionGoogle() {
             if (isProcessing) return;
             isProcessing = true;
@@ -1059,7 +1874,6 @@
                 document.getElementById('logout-google').style.display = 'none';
                 document.getElementById('login-google').style.display = 'flex';
                 
-                // Recargar datos locales
                 cargarDatosIniciales();
                 actualizarTabla();
             } catch (error) {
@@ -1070,7 +1884,6 @@
             }
         }
         
-        // Guardar datos en la nube
         async function guardarDatosEnLaNube() {
             if (!usuarioGoogle) {
                 actualizarEstadoNube(false, 'No hay usuario autenticado');
@@ -1078,7 +1891,6 @@
             }
             
             try {
-                // Obtener todos los días del mes actual
                 const diasCompletosDelMes = generarDiasCompletosDelMes();
                 
                 const datosSistema = {
@@ -1086,7 +1898,6 @@
                     registros: registros,
                     usuarioActual: usuarioActual,
                     salarioHora: document.getElementById('salario-hora').value,
-                    // Incluir todos los días del mes en el JSON
                     diasCompletosDelMes: diasCompletosDelMes,
                     fechaActualizacion: serverTimestamp()
                 };
@@ -1101,7 +1912,6 @@
             }
         }
         
-        // Cargar datos desde la nube
         async function cargarDatosDesdeLaNube() {
             if (!usuarioGoogle) {
                 return false;
@@ -1122,7 +1932,6 @@
                         document.getElementById('salario-hora').value = datos.salarioHora;
                     }
                     
-                    // Guardar también en localStorage como backup
                     guardarEnLocalStorage('usuarios', usuarios);
                     guardarEnLocalStorage('registros', registros);
                     guardarEnLocalStorage('usuarioActual', usuarioActual);
@@ -1139,7 +1948,6 @@
                     mostrarMensaje('✅ Datos sincronizados desde la nube', 'success');
                     return true;
                 } else {
-                    // Crear perfil nuevo en la nube
                     await guardarDatosEnLaNube();
                     actualizarEstadoNube(true, 'Nuevo perfil creado en la nube');
                     return true;
@@ -1155,21 +1963,27 @@
         // FUNCIONES DE USUARIO
         // ============================================
         
-        // Cargar datos iniciales
         function cargarDatosIniciales() {
             usuarios = cargarDesdeLocalStorage('usuarios', ['MARCO MAIDANA', 'JUAN PÉREZ', 'MARÍA GARCÍA']);
             registros = cargarDesdeLocalStorage('registros', []);
             usuarioActual = cargarDesdeLocalStorage('usuarioActual', null);
+            
+            // Recuperar token FCM guardado
+            const tokenGuardado = localStorage.getItem('fcm_token');
+            if (tokenGuardado) {
+                fcmToken = tokenGuardado;
+                document.getElementById('fcm-status').style.display = 'block';
+                document.getElementById('fcm-status-text').textContent = '✅ Notificaciones activadas';
+                document.getElementById('activar-fcm').style.display = 'none';
+            }
         }
         
-        // Mostrar modal de usuario
         function mostrarModalUsuario() {
             actualizarListaUsuarios();
             document.getElementById('usuario-modal').classList.add('active');
             setTimeout(() => document.getElementById('nuevo-usuario').focus(), 100);
         }
         
-        // Actualizar lista de usuarios
         function actualizarListaUsuarios() {
             const lista = document.getElementById('lista-usuarios');
             lista.innerHTML = '';
@@ -1201,7 +2015,6 @@
             });
         }
         
-        // Seleccionar usuario
         async function seleccionarUsuario(usuario) {
             usuarioActual = usuario;
             guardarEnLocalStorage('usuarioActual', usuarioActual);
@@ -1216,7 +2029,6 @@
             mostrarMensaje(`Usuario seleccionado: ${usuarioActual}`, 'success');
         }
         
-        // Crear nuevo usuario
         async function crearUsuario() {
             const nuevoUsuario = document.getElementById('nuevo-usuario').value.trim();
             
@@ -1237,7 +2049,6 @@
             }
         }
         
-        // Actualizar display del usuario
         function actualizarDisplayUsuario() {
             document.getElementById('nombre-display').textContent = usuarioActual || 'No seleccionado';
         }
@@ -1246,7 +2057,6 @@
         // FUNCIONES DE REGISTRO DE TURNOS
         // ============================================
         
-        // Calcular horas trabajadas
         function calcularHoras(entrada, salida) {
             if (!entrada || !salida) return 0;
             
@@ -1261,35 +2071,17 @@
                 minutos += 60;
             }
             
-            if (horas < 0) horas += 24; // Para turnos nocturnos
+            if (horas < 0) horas += 24;
             
             return horas + (minutos / 60);
         }
         
-        // Registrar turno
-        async function registrarTurno(turno, tipo) {
-            if (isProcessing) return;
-            isProcessing = true;
-            
-            if (!usuarioActual) {
-                mostrarMensaje('Primero debes seleccionar un usuario', 'error');
-                mostrarModalUsuario();
-                isProcessing = false;
-                return;
-            }
-            
+        function ejecutarRegistro(turno, tipo) {
             const { fecha, hora, diaSemana } = obtenerFechaHora();
             const salarioHora = parseFloat(document.getElementById('salario-hora').value) || 8.50;
             
-            // Verificar si es domingo
-            if (diaSemana === 'Domingo') {
-                if (!confirm('⚠️ ¡Es Domingo! ¿Estás seguro de registrar turno?')) {
-                    isProcessing = false;
-                    return;
-                }
-            }
+            console.log(`Ejecutando registro: ${tipo} ${turno} a las ${hora}`);
             
-            // Buscar registro existente
             let registroIndex = registros.findIndex(r => 
                 r.usuario === usuarioActual && 
                 r.fecha === fecha && 
@@ -1297,7 +2089,6 @@
             );
             
             if (registroIndex === -1) {
-                // Nuevo registro
                 const nuevoRegistro = {
                     usuario: usuarioActual,
                     fecha,
@@ -1324,8 +2115,8 @@
                 }
                 
                 registros.push(nuevoRegistro);
+                console.log('Nuevo registro creado:', nuevoRegistro);
             } else {
-                // Actualizar registro existente
                 const registro = registros[registroIndex];
                 
                 if (tipo === 'Entrada') {
@@ -1339,28 +2130,80 @@
                 }
                 
                 registro.diaSemana = diaSemana;
+                console.log('Registro actualizado:', registro);
             }
             
-            // Guardar datos
             if (guardarEnLocalStorage('registros', registros)) {
                 if (usuarioGoogle) {
-                    await guardarDatosEnLaNube();
+                    guardarDatosEnLaNube();
                 }
                 
                 actualizarTabla();
-                
-                // Enviar notificación por WhatsApp
                 enviarWhatsApp(turno, tipo, fecha, hora);
+                guardarRegistroEnCarpetaLocal(turno, tipo, fecha, hora);
+                
+                // Notificación de confirmación
+                let titulo, mensaje;
+                if (turno === 'Mañana' && tipo === 'Entrada') {
+                    titulo = "🌅 BUENOS DÍAS";
+                    mensaje = "Entrada registrada. ¡Que tengas productiva mañana!";
+                } else if (turno === 'Mañana' && tipo === 'Salida') {
+                    titulo = "🍽️ BUEN PROVECHO";
+                    mensaje = "Salida registrada. ¡Disfruta tu almuerzo!";
+                } else if (turno === 'Tarde' && tipo === 'Entrada') {
+                    titulo = "☀️ BUENAS TARDES";
+                    mensaje = "Entrada registrada. ¡Vamos por esa tarde productiva!";
+                } else {
+                    titulo = "🌙 HASTA MAÑANA";
+                    mensaje = "Salida registrada. ¡Descansa y recarga energías!";
+                }
+                
+                enviarNotificacionFCM(titulo, mensaje, `registro-${turno}-${tipo}`);
                 
                 mostrarMensaje(`${tipo} ${turno} registrado correctamente`, 'success');
             } else {
                 mostrarMensaje('Error al guardar el registro', 'error');
             }
-            
-            isProcessing = false;
         }
         
-        // Enviar WhatsApp
+        function registrarTurnoConValidacion(turno, tipo) {
+            console.log(`🔄 Intentando registrar: ${tipo} ${turno}`);
+            
+            if (window.contadorRegistro && window.contadorRegistro.isActive()) {
+                return;
+            }
+            
+            if (!usuarioActual) {
+                mostrarMensaje('Primero debes seleccionar un usuario', 'error');
+                mostrarModalUsuario();
+                return;
+            }
+            
+            const { hora, diaSemana } = obtenerFechaHora();
+            
+            if (diaSemana === 'Domingo') {
+                if (!confirm('🙏 ¡Es Domingo! ¿Estás seguro de registrar turno?')) {
+                    return;
+                }
+            }
+            
+            if (window.contadorRegistro) {
+                window.contadorRegistro.iniciar(
+                    turno, 
+                    tipo, 
+                    (turnoConfirmado, tipoConfirmado) => {
+                        console.log(`✅ Confirmado: ${tipoConfirmado} ${turnoConfirmado}`);
+                        ejecutarRegistro(turnoConfirmado, tipoConfirmado);
+                    },
+                    () => {
+                        console.log('❌ Registro cancelado');
+                    }
+                );
+            } else {
+                ejecutarRegistro(turno, tipo);
+            }
+        }
+        
         function enviarWhatsApp(turno, tipo, fecha, hora) {
             const mensaje = `📌 REGISTRO DE ASISTENCIA
 
@@ -1376,11 +2219,114 @@
             window.open(url, '_blank');
         }
         
+        async function guardarRegistroEnCarpetaLocal(turno, tipo, fecha, hora) {
+            try {
+                const año = fecha.split('-')[0];
+                const mes = fecha.split('-')[1];
+                const nombreMes = meses[parseInt(mes) - 1];
+                const usuarioFolder = usuarioActual.replace(/[^a-zA-Z0-9]/g, '_');
+                
+                const registroTexto = `========================================
+EDITORIAL BINOMIO - REGISTRO DE TURNO
+========================================
+Usuario: ${usuarioActual}
+Fecha: ${fecha}
+Hora: ${hora}
+Turno: ${turno}
+Tipo: ${tipo}
+----------------------------------------
+Generado: ${new Date().toLocaleString()}
+========================================\n\n`;
+                
+                const nombreArchivo = `${fecha}_${turno}_${tipo}.txt`;
+                
+                if ('showDirectoryPicker' in window) {
+                    try {
+                        const dirHandle = await window.showDirectoryPicker({
+                            id: 'editorial-binomio-auto',
+                            mode: 'readwrite',
+                            startIn: 'downloads'
+                        });
+                        
+                        let binomioDir = await dirHandle.getDirectoryHandle('EDITORIAL_BINOMIO', { create: true });
+                        let usuarioDir = await binomioDir.getDirectoryHandle(usuarioFolder, { create: true });
+                        let añoDir = await usuarioDir.getDirectoryHandle(año, { create: true });
+                        let mesDir = await añoDir.getDirectoryHandle(`${mes}_${nombreMes}`, { create: true });
+                        
+                        const fileHandle = await mesDir.getFileHandle(nombreArchivo, { create: true });
+                        const writable = await fileHandle.createWritable();
+                        await writable.write(registroTexto);
+                        await writable.close();
+                        
+                        console.log('✅ Registro guardado automáticamente en carpeta local');
+                        return true;
+                    } catch (permError) {
+                        console.warn('Permiso no concedido para guardado automático:', permError);
+                        return false;
+                    }
+                }
+                return false;
+            } catch (error) {
+                console.error('Error al guardar en carpeta local:', error);
+                return false;
+            }
+        }
+        
+        async function limpiarRegistrosMesActual() {
+            if (!usuarioActual) {
+                mostrarMensaje('Debes seleccionar un usuario', 'error');
+                mostrarModalUsuario();
+                return;
+            }
+            
+            const ahora = new Date();
+            const año = ahora.getFullYear();
+            const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+            const nombreMes = meses[ahora.getMonth()];
+            
+            const modal = document.getElementById('confirmar-limpiar-modal');
+            document.getElementById('usuario-limpiar').textContent = `${usuarioActual} - ${nombreMes} ${año}`;
+            modal.classList.add('active');
+            
+            const confirmarBtn = document.getElementById('confirmar-limpiar-si');
+            const cancelarBtn = document.getElementById('confirmar-limpiar-no');
+            
+            const confirmHandler = async function() {
+                modal.classList.remove('active');
+                
+                const registrosNuevos = registros.filter(r => 
+                    !(r.usuario === usuarioActual && r.fecha.startsWith(`${año}-${mes}`))
+                );
+                
+                registros = registrosNuevos;
+                
+                guardarEnLocalStorage('registros', registros);
+                if (usuarioGoogle) {
+                    await guardarDatosEnLaNube();
+                }
+                
+                actualizarTabla();
+                mostrarMensaje(`✅ Registros de ${nombreMes} ${año} eliminados correctamente`, 'success');
+                
+                confirmarBtn.removeEventListener('click', confirmHandler);
+                cancelarBtn.removeEventListener('click', cancelHandler);
+            };
+            
+            const cancelHandler = function() {
+                modal.classList.remove('active');
+                mostrarMensaje('Operación cancelada', 'error');
+                confirmarBtn.removeEventListener('click', confirmHandler);
+                cancelarBtn.removeEventListener('click', cancelHandler);
+            };
+            
+            confirmarBtn.addEventListener('click', confirmHandler, { once: true });
+            cancelarBtn.addEventListener('click', cancelHandler, { once: true });
+        }
+        
         // ============================================
-        // FUNCIONES DE TABLA Y FILTROS
+        // FUNCIONES DE TABLA
         // ============================================
         
-        // Generar todos los días del mes actual
         function generarDiasCompletosDelMes() {
             const ahora = new Date();
             const año = ahora.getFullYear();
@@ -1393,13 +2339,11 @@
                 const fechaObj = new Date(año, mes - 1, dia);
                 const diaSemana = diasSemana[fechaObj.getDay()];
                 
-                // Buscar registros para este día
                 const registrosDia = registros.filter(r => 
                     r.usuario === usuarioActual && 
                     r.fecha === fechaStr
                 );
                 
-                // Crear objeto día completo
                 const diaCompleto = {
                     fecha: fechaStr,
                     diaSemana: diaSemana,
@@ -1407,7 +2351,6 @@
                     tarde: { entrada: '', salida: '', horas: 0 }
                 };
                 
-                // Llenar con datos si existen
                 registrosDia.forEach(registro => {
                     if (registro.turno === 'Mañana') {
                         diaCompleto.mañana.entrada = registro.entrada || '';
@@ -1426,15 +2369,26 @@
             return diasCompletos;
         }
         
-        // Actualizar tabla
         function actualizarTabla() {
             const tbody = document.getElementById('cuerpo-tabla');
             const filtroMes = document.getElementById('filtro-mes').value;
             
-            // Obtener todos los días del mes actual
+            if (!tbody) return;
+            
+            if (!usuarioActual) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 25px; color: var(--color-text-muted);">
+                            👤 Selecciona un usuario para ver sus registros
+                        </td>
+                    </tr>
+                `;
+                actualizarResumenPago(0, 0);
+                return;
+            }
+            
             const diasCompletos = generarDiasCompletosDelMes();
             
-            // Filtrar por mes si se seleccionó
             let diasMostrar = diasCompletos;
             if (filtroMes !== 'todos') {
                 diasMostrar = diasCompletos.filter(dia => {
@@ -1444,7 +2398,6 @@
                 });
             }
             
-            // Limpiar tabla
             tbody.innerHTML = '';
             
             if (diasMostrar.length === 0) {
@@ -1455,7 +2408,7 @@
                         </td>
                     </tr>
                 `;
-                actualizarResumenPago([]);
+                actualizarResumenPago(0, 0);
                 return;
             }
             
@@ -1463,7 +2416,6 @@
             let totalPagar = 0;
             const salarioHora = parseFloat(document.getElementById('salario-hora').value) || 8.50;
             
-            // Mostrar todos los días
             diasMostrar.forEach(dia => {
                 const horasDia = dia.mañana.horas + dia.tarde.horas;
                 const totalDia = horasDia * salarioHora;
@@ -1491,20 +2443,15 @@
                 tbody.appendChild(fila);
             });
             
-            // Actualizar resumen
             actualizarResumenPago(totalHoras, totalPagar);
-            
-            // Actualizar filtro de meses
             actualizarFiltroMeses();
         }
         
-        // Actualizar resumen de pagos
         function actualizarResumenPago(totalHoras, totalPagar) {
             document.getElementById('total-horas').value = `${totalHoras.toFixed(2)} horas`;
             document.getElementById('total-pagar').value = `$${totalPagar.toFixed(2)}`;
         }
         
-        // Actualizar filtro de meses
         function actualizarFiltroMeses() {
             const select = document.getElementById('filtro-mes');
             const mesesRegistrados = new Set();
@@ -1536,98 +2483,57 @@
         }
         
         // ============================================
-        // FUNCIONES DE IMPORTACIÓN/EXPORTACIÓN
+        // FUNCIONES DE EXPORTACIÓN
         // ============================================
         
-        // Exportar sistema (INCLUYE TODOS LOS DÍAS)
         function exportarSistema() {
             if (isProcessing) return;
             isProcessing = true;
             
             try {
-                // Obtener todos los días del mes actual
                 const diasCompletosDelMes = generarDiasCompletosDelMes();
                 
-                // Crear datos estructurados para exportación
                 const datosExportacion = {
-                    // Información del sistema
                     metadata: {
                         nombreSistema: "Sistema de Registro de Turnos - Editorial Binomio",
                         fechaExportacion: new Date().toISOString(),
-                        version: "2.5",
+                        version: "4.0",
                         usuarioActual: usuarioActual,
-                        salarioHora: parseFloat(document.getElementById('salario-hora').value) || 8.50
+                        salarioHora: parseFloat(document.getElementById('salario-hora').value) || 8.50,
+                        totalRegistros: registros.length,
+                        totalUsuarios: usuarios.length
                     },
-                    
-                    // Usuarios del sistema
                     usuarios: usuarios,
-                    
-                    // Registros originales (datos crudos)
                     registrosOriginales: registros,
-                    
-                    // DÍAS COMPLETOS DEL MES (INCLUYE DÍAS SIN TRABAJO)
                     diasCompletosDelMes: diasCompletosDelMes,
-                    
-                    // Resumen del mes actual
-                    resumenMesActual: {
-                        totalHoras: 0,
-                        totalPagar: 0,
-                        diasTrabajados: 0,
-                        diasSinTrabajar: 0,
-                        diasDetalle: []
+                    estadisticas: {
+                        porUsuario: {}
                     }
                 };
                 
-                // Calcular resumen
-                let totalHorasMes = 0;
-                let totalPagarMes = 0;
-                let diasTrabajados = 0;
-                
-                diasCompletosDelMes.forEach(dia => {
-                    const horasDia = dia.mañana.horas + dia.tarde.horas;
-                    const totalDia = horasDia * datosExportacion.metadata.salarioHora;
+                usuarios.forEach(u => {
+                    const registrosUsuario = registros.filter(r => r.usuario === u);
+                    const horasTotales = registrosUsuario.reduce((acc, r) => acc + (r.horas || 0), 0);
+                    const pagoTotal = registrosUsuario.reduce((acc, r) => acc + (r.total || 0), 0);
                     
-                    totalHorasMes += horasDia;
-                    totalPagarMes += totalDia;
-                    
-                    const trabajoDia = {
-                        fecha: dia.fecha,
-                        diaSemana: dia.diaSemana,
-                        trabajoRealizado: horasDia > 0,
-                        horasTrabajadas: horasDia,
-                        totalDia: totalDia,
-                        detalle: {
-                            mañana: dia.mañana,
-                            tarde: dia.tarde
-                        }
+                    datosExportacion.estadisticas.porUsuario[u] = {
+                        registros: registrosUsuario.length,
+                        horas: horasTotales,
+                        pago: pagoTotal
                     };
-                    
-                    datosExportacion.resumenMesActual.diasDetalle.push(trabajoDia);
-                    
-                    if (horasDia > 0) {
-                        diasTrabajados++;
-                    }
                 });
                 
-                const totalDiasMes = diasCompletosDelMes.length;
-                
-                datosExportacion.resumenMesActual.totalHoras = totalHorasMes;
-                datosExportacion.resumenMesActual.totalPagar = totalPagarMes;
-                datosExportacion.resumenMesActual.diasTrabajados = diasTrabajados;
-                datosExportacion.resumenMesActual.diasSinTrabajar = totalDiasMes - diasTrabajados;
-                
-                // Convertir a JSON
                 const datosJSON = JSON.stringify(datosExportacion, null, 2);
                 const blob = new Blob([datosJSON], { type: 'application/json' });
                 const url = URL.createObjectURL(blob);
                 
-                // Crear nombre de archivo
                 const ahora = new Date();
                 const año = ahora.getFullYear();
                 const mes = String(ahora.getMonth() + 1).padStart(2, '0');
-                const nombreArchivo = `registro_turnos_${usuarioActual}_${año}_${mes}_completo.json`;
+                const dia = String(ahora.getDate()).padStart(2, '0');
                 
-                // Descargar
+                const nombreArchivo = `registro_binomio_${año}${mes}${dia}_v4.json`;
+                
                 const a = document.createElement('a');
                 a.href = url;
                 a.download = nombreArchivo;
@@ -1636,8 +2542,9 @@
                 document.body.removeChild(a);
                 URL.revokeObjectURL(url);
                 
-                mostrarMensaje('✅ Sistema exportado con TODOS los días del mes', 'success');
+                localStorage.setItem('ultimaExportacion', Date.now().toString());
                 
+                mostrarMensaje(`✅ Sistema exportado: ${registros.length} registros`, 'success');
             } catch (error) {
                 console.error('Error al exportar:', error);
                 mostrarMensaje('❌ Error al exportar el sistema', 'error');
@@ -1646,7 +2553,6 @@
             }
         }
         
-        // Importar sistema
         function importarSistema() {
             if (isProcessing) return;
             
@@ -1667,56 +2573,64 @@
                     try {
                         const datosImportados = JSON.parse(e.target.result);
                         
-                        // Verificar que sea un archivo válido
                         if (!datosImportados.usuarios || !datosImportados.registrosOriginales) {
                             throw new Error('Archivo JSON no válido');
                         }
                         
-                        if (confirm('¿Estás seguro de importar estos datos?\nSe sobrescribirán los datos actuales.')) {
-                            // Restaurar datos básicos
-                            usuarios = datosImportados.usuarios;
-                            registros = datosImportados.registrosOriginales;
-                            usuarioActual = datosImportados.metadata?.usuarioActual || usuarioActual;
+                        const mensajePreview = `
+📁 ARCHIVO A IMPORTAR:
+👥 Usuarios: ${datosImportados.usuarios.length}
+📊 Registros: ${datosImportados.registrosOriginales.length}
+👤 Usuario activo: ${datosImportados.metadata?.usuarioActual || 'Ninguno'}
+
+¿Deseas importar estos datos?
+                        `;
+                        
+                        if (confirm(mensajePreview)) {
+                            const opcion = confirm('¿Fusionar con datos existentes?\n\n✓ Aceptar = FUSIONAR\n✗ Cancelar = REEMPLAZAR');
                             
-                            // Restaurar salario por hora
+                            if (opcion) {
+                                const usuariosExistentes = new Set(usuarios);
+                                datosImportados.usuarios.forEach(u => usuariosExistentes.add(u));
+                                usuarios = Array.from(usuariosExistentes);
+                                
+                                const registrosMap = new Map();
+                                registros.forEach(r => {
+                                    const key = `${r.usuario}-${r.fecha}-${r.turno}`;
+                                    registrosMap.set(key, r);
+                                });
+                                
+                                datosImportados.registrosOriginales.forEach(r => {
+                                    const key = `${r.usuario}-${r.fecha}-${r.turno}`;
+                                    registrosMap.set(key, r);
+                                });
+                                
+                                registros = Array.from(registrosMap.values());
+                            } else {
+                                usuarios = datosImportados.usuarios;
+                                registros = datosImportados.registrosOriginales;
+                            }
+                            
+                            if (datosImportados.metadata?.usuarioActual) {
+                                usuarioActual = datosImportados.metadata.usuarioActual;
+                            }
+                            
                             if (datosImportados.metadata?.salarioHora) {
                                 document.getElementById('salario-hora').value = datosImportados.metadata.salarioHora;
                             }
                             
-                            // Guardar en localStorage
                             guardarEnLocalStorage('usuarios', usuarios);
                             guardarEnLocalStorage('registros', registros);
                             guardarEnLocalStorage('usuarioActual', usuarioActual);
                             
-                            // Guardar en la nube si hay sesión activa
                             if (usuarioGoogle) {
                                 await guardarDatosEnLaNube();
                             }
                             
-                            // Actualizar interfaz
-                            if (usuarioActual) {
-                                actualizarDisplayUsuario();
-                            }
-                            
+                            if (usuarioActual) actualizarDisplayUsuario();
                             actualizarTabla();
                             
-                            // Mostrar resumen de importación
-                            let mensajeImportacion = '✅ Sistema importado correctamente\n';
-                            
-                            if (datosImportados.resumenMesActual) {
-                                mensajeImportacion += `\n📊 Resumen del mes:\n`;
-                                mensajeImportacion += `- Días trabajados: ${datosImportados.resumenMesActual.diasTrabajados}\n`;
-                                mensajeImportacion += `- Días sin trabajar: ${datosImportados.resumenMesActual.diasSinTrabajar}\n`;
-                                mensajeImportacion += `- Total horas: ${datosImportados.resumenMesActual.totalHoras.toFixed(2)}\n`;
-                                mensajeImportacion += `- Total a pagar: $${datosImportados.resumenMesActual.totalPagar.toFixed(2)}`;
-                            }
-                            
-                            // Mostrar alerta con resumen
-                            setTimeout(() => {
-                                alert(mensajeImportacion);
-                            }, 500);
-                            
-                            mostrarMensaje('✅ Sistema importado correctamente', 'success');
+                            mostrarMensaje(`✅ Sistema importado correctamente`, 'success');
                         }
                     } catch (error) {
                         console.error('Error al importar:', error);
@@ -1735,7 +2649,6 @@
         // FUNCIONES DE DESARROLLADOR
         // ============================================
         
-        // Mostrar panel de desarrollador con contraseña
         function mostrarPanelDesarrollador() {
             document.getElementById('password-modal').classList.add('active');
             document.getElementById('password-input').value = '';
@@ -1743,7 +2656,6 @@
             document.getElementById('password-input').focus();
         }
         
-        // Verificar contraseña de desarrollador
         function verificarPassword() {
             const passwordInput = document.getElementById('password-input').value;
             const passwordError = document.getElementById('password-error');
@@ -1752,7 +2664,6 @@
                 document.getElementById('password-modal').classList.remove('active');
                 document.getElementById('dev-panel').style.display = 'block';
                 
-                // Cargar código guardado si existe
                 const codigoGuardado = localStorage.getItem('codigo_mejoras');
                 if (codigoGuardado) {
                     document.getElementById('dev-code').value = codigoGuardado;
@@ -1766,7 +2677,6 @@
             }
         }
         
-        // Implementar mejoras
         function implementarMejoras() {
             const codigo = document.getElementById('dev-code').value.trim();
             const devStatus = document.getElementById('dev-status');
@@ -1781,13 +2691,9 @@
             }
             
             try {
-                // Guardar el código
                 localStorage.setItem('codigo_mejoras', codigo);
-                
-                // Evaluar el código
                 eval(codigo);
                 
-                // Mostrar éxito
                 devStatus.textContent = '✅ Mejoras implementadas exitosamente';
                 devStatus.style.display = 'block';
                 devStatus.style.background = 'rgba(76, 175, 80, 0.15)';
@@ -1795,7 +2701,6 @@
                 devStatus.style.color = '#C8E6C9';
                 
                 mostrarMensaje('🚀 Mejoras implementadas en tiempo real', 'success');
-                
             } catch (error) {
                 devStatus.textContent = `❌ Error: ${error.message}`;
                 devStatus.style.display = 'block';
@@ -1806,34 +2711,157 @@
             }
         }
         
-        // Restaurar sistema
         function restaurarSistema() {
-            if (confirm('⚠️ ¿Restaurar sistema a valores por defecto?\n\nEsto eliminará las mejoras personalizadas pero NO los datos de usuarios y registros.')) {
+            if (confirm('⚠️ ¿Restaurar sistema a valores por defecto?')) {
                 localStorage.removeItem('codigo_mejoras');
                 document.getElementById('dev-code').value = '';
-                document.getElementById('dev-status').textContent = '✅ Sistema restaurado a valores por defecto';
+                document.getElementById('dev-status').textContent = '✅ Sistema restaurado';
                 document.getElementById('dev-status').style.display = 'block';
-                document.getElementById('dev-status').style.background = 'rgba(255, 152, 0, 0.15)';
-                document.getElementById('dev-status').style.border = '2px solid var(--color-warning)';
-                document.getElementById('dev-status').style.color = '#FFF9C4';
-                
-                mostrarMensaje('🔧 Sistema restaurado a configuración original', 'success');
+                mostrarMensaje('🔧 Sistema restaurado', 'success');
             }
         }
         
         // ============================================
-        // INICIALIZACIÓN DEL SISTEMA
+        // CLASE CONTADOR REGISTRO
+        // ============================================
+        
+        class ContadorRegistro {
+            constructor() {
+                this.activo = false;
+                this.tiempoRestante = 5;
+                this.turnoPendiente = null;
+                this.tipoPendiente = null;
+                this.intervalo = null;
+                this.elemento = null;
+                this.onCompletado = null;
+                this.onCancelado = null;
+                this.init();
+            }
+            
+            init() {
+                this.elemento = document.createElement('div');
+                this.elemento.className = 'contador-registro';
+                this.elemento.innerHTML = `
+                    <div class="contador-header">
+                        <div class="contador-icono" id="contador-icono">⏰</div>
+                        <div class="contador-titulo" id="contador-titulo">REGISTRANDO</div>
+                    </div>
+                    <div class="contador-info">
+                        <div class="contador-turno" id="contador-turno"></div>
+                        <div class="contador-fecha" id="contador-fecha"></div>
+                    </div>
+                    <div class="contador-numero" id="contador-numero">5</div>
+                    <div class="contador-barra">
+                        <div class="contador-progreso" id="contador-progreso" style="width: 100%;"></div>
+                    </div>
+                    <div class="contador-botones">
+                        <button class="contador-btn cancelar" id="contador-cancelar">✗ CANCELAR</button>
+                        <button class="contador-btn confirmar" id="contador-confirmar">✓ CONFIRMAR</button>
+                    </div>
+                    <div class="contador-ayuda">⏎ ESPACIO • ESC</div>
+                `;
+                
+                document.body.appendChild(this.elemento);
+                
+                document.getElementById('contador-cancelar').addEventListener('click', () => this.cancelar());
+                document.getElementById('contador-confirmar').addEventListener('click', () => this.confirmar());
+            }
+            
+            iniciar(turno, tipo, onCompletado, onCancelado) {
+                if (this.activo) this.cancelar();
+                
+                this.activo = true;
+                this.tiempoRestante = 5;
+                this.turnoPendiente = turno;
+                this.tipoPendiente = tipo;
+                this.onCompletado = onCompletado;
+                this.onCancelado = onCancelado;
+                
+                this.elemento.style.visibility = 'visible';
+                this.elemento.style.opacity = '1';
+                this.elemento.style.transform = 'translate(-50%, -50%) scale(1)';
+                
+                this.intervalo = setInterval(() => {
+                    this.tiempoRestante--;
+                    document.getElementById('contador-numero').textContent = this.tiempoRestante;
+                    document.getElementById('contador-progreso').style.width = `${(this.tiempoRestante/5)*100}%`;
+                    
+                    if (this.tiempoRestante <= 0) this.confirmar();
+                }, 1000);
+            }
+            
+            confirmar() {
+                clearInterval(this.intervalo);
+                this.elemento.style.opacity = '0';
+                this.elemento.style.transform = 'translate(-50%, -50%) scale(0.9)';
+                setTimeout(() => this.elemento.style.visibility = 'hidden', 400);
+                if (this.onCompletado) this.onCompletado(this.turnoPendiente, this.tipoPendiente);
+                this.activo = false;
+            }
+            
+            cancelar() {
+                clearInterval(this.intervalo);
+                this.elemento.style.opacity = '0';
+                this.elemento.style.transform = 'translate(-50%, -50%) scale(0.9)';
+                setTimeout(() => this.elemento.style.visibility = 'hidden', 400);
+                if (this.onCancelado) this.onCancelado();
+                this.activo = false;
+            }
+            
+            isActive() { return this.activo; }
+        }
+        
+        // ============================================
+        // CLASE FESTIVIDADES
+        // ============================================
+        
+        class EditorialBinomioFestividades {
+            constructor() {
+                this.festividades = [
+                    { nombre: "Año Nuevo", mes: 0, dia: 1 },
+                    { nombre: "Día del Mar", mes: 2, dia: 23 },
+                    { nombre: "Día del Trabajo", mes: 4, dia: 1 },
+                    { nombre: "Año Nuevo Andino", mes: 5, dia: 21 },
+                    { nombre: "San Juan", mes: 5, dia: 24 },
+                    { nombre: "Día de la Independencia", mes: 7, dia: 6 },
+                    { nombre: "Urkupiña", mes: 7, dia: 15 },
+                    { nombre: "Día de los Difuntos", mes: 10, dia: 2 },
+                    { nombre: "Navidad", mes: 11, dia: 25 }
+                ];
+                
+                this.init();
+            }
+            
+            init() {
+                const hoy = new Date();
+                const festividad = this.festividades.find(f => f.mes === hoy.getMonth() && f.dia === hoy.getDate());
+                
+                if (festividad) {
+                    setTimeout(() => {
+                        enviarNotificacionFCM(
+                            `🎉 ${festividad.nombre}`,
+                            'Editorial Binomio celebra contigo',
+                            'festividad'
+                        );
+                    }, 5000);
+                }
+            }
+        }
+        
+        // ============================================
+        // INICIALIZACIÓN
         // ============================================
         
         async function inicializarAplicacion() {
-            // Cargar datos iniciales
-            cargarDatosIniciales();
+            console.log('🚀 Inicializando aplicación...');
             
-            // Configurar hora actual
+            cargarDatosIniciales();
             actualizarHora();
             setInterval(actualizarHora, 1000);
             
-            // Configurar Firebase Auth State
+            window.contadorRegistro = new ContadorRegistro();
+            new EditorialBinomioFestividades();
+            
             onAuthStateChanged(window.firebaseAuth, (user) => {
                 if (user) {
                     usuarioGoogle = user;
@@ -1841,12 +2869,14 @@
                     document.getElementById('logout-google').style.display = 'flex';
                     
                     cargarDatosDesdeLaNube().then(() => {
-                        if (!usuarioActual) {
-                            mostrarModalUsuario();
-                        } else {
+                        if (!usuarioActual) mostrarModalUsuario();
+                        else {
                             actualizarDisplayUsuario();
                             actualizarTabla();
                         }
+                        
+                        // Guardar token FCM si existe
+                        if (fcmToken) guardarTokenEnFirestore(fcmToken);
                     });
                 } else {
                     usuarioGoogle = null;
@@ -1854,26 +2884,19 @@
                     document.getElementById('logout-google').style.display = 'none';
                     actualizarEstadoNube(false, 'Inicia sesión para guardar en la nube');
                     
-                    if (!usuarioActual) {
-                        mostrarModalUsuario();
-                    } else {
+                    if (!usuarioActual) mostrarModalUsuario();
+                    else {
                         actualizarDisplayUsuario();
                         actualizarTabla();
                     }
                 }
             });
             
-            // Aplicar mejoras guardadas si existen
             const codigoGuardado = localStorage.getItem('codigo_mejoras');
             if (codigoGuardado) {
-                try {
-                    eval(codigoGuardado);
-                } catch (error) {
-                    console.error('Error al cargar mejoras:', error);
-                }
+                try { eval(codigoGuardado); } catch (error) { console.error('Error al cargar mejoras:', error); }
             }
             
-            // Mostrar sistema
             setTimeout(() => {
                 document.getElementById('loading-screen').style.display = 'none';
                 document.getElementById('main-system').style.display = 'block';
@@ -1886,80 +2909,74 @@
         
         document.addEventListener('DOMContentLoaded', inicializarAplicacion);
         
-        // Botones de turno
-        document.getElementById('entrada-manana').addEventListener('click', () => registrarTurno('Mañana', 'Entrada'));
-        document.getElementById('salida-manana').addEventListener('click', () => registrarTurno('Mañana', 'Salida'));
-        document.getElementById('entrada-tarde').addEventListener('click', () => registrarTurno('Tarde', 'Entrada'));
-        document.getElementById('salida-tarde').addEventListener('click', () => registrarTurno('Tarde', 'Salida'));
+        document.getElementById('entrada-manana').addEventListener('click', () => registrarTurnoConValidacion('Mañana', 'Entrada'));
+        document.getElementById('salida-manana').addEventListener('click', () => registrarTurnoConValidacion('Mañana', 'Salida'));
+        document.getElementById('entrada-tarde').addEventListener('click', () => registrarTurnoConValidacion('Tarde', 'Entrada'));
+        document.getElementById('salida-tarde').addEventListener('click', () => registrarTurnoConValidacion('Tarde', 'Salida'));
         
-        // Botones de usuario
         document.getElementById('cambiar-usuario').addEventListener('click', mostrarModalUsuario);
+        document.getElementById('gestion-usuarios').addEventListener('click', () => mostrarMensaje('Función en desarrollo', 'error'));
         
-        // Botones de gestión
-        document.getElementById('gestion-usuarios').addEventListener('click', function() {
-            mostrarMensaje('Función en desarrollo', 'error');
-        });
-        
-        // Botones de exportación/importación
         document.getElementById('exportar-sistema').addEventListener('click', exportarSistema);
         document.getElementById('importar-sistema').addEventListener('click', importarSistema);
+        document.getElementById('limpiar-mes-actual').addEventListener('click', limpiarRegistrosMesActual);
         
-        // Botones de autenticación Google
         document.getElementById('login-google').addEventListener('click', iniciarSesionGoogle);
         document.getElementById('logout-google').addEventListener('click', cerrarSesionGoogle);
         
-        // Botones de desarrollador
         document.getElementById('toggle-dev').addEventListener('click', mostrarPanelDesarrollador);
         document.getElementById('dev-save').addEventListener('click', implementarMejoras);
         document.getElementById('dev-reset').addEventListener('click', restaurarSistema);
         
-        // Modal de usuario
         document.getElementById('crear-usuario').addEventListener('click', crearUsuario);
-        document.getElementById('cerrar-modal').addEventListener('click', () => {
-            document.getElementById('usuario-modal').classList.remove('active');
-        });
+        document.getElementById('cerrar-modal').addEventListener('click', () => document.getElementById('usuario-modal').classList.remove('active'));
+        document.getElementById('nuevo-usuario').addEventListener('keypress', (e) => { if (e.key === 'Enter') crearUsuario(); });
         
-        document.getElementById('nuevo-usuario').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') crearUsuario();
-        });
-        
-        // Modal de contraseña
         document.getElementById('password-confirm').addEventListener('click', verificarPassword);
         document.getElementById('password-cancel').addEventListener('click', () => {
             document.getElementById('password-modal').classList.remove('active');
             document.getElementById('password-error').style.display = 'none';
             document.getElementById('password-input').value = '';
         });
+        document.getElementById('password-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') verificarPassword(); });
         
-        document.getElementById('password-input').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') verificarPassword();
-        });
-        
-        // Filtros
         document.getElementById('filtro-mes').addEventListener('change', actualizarTabla);
         document.getElementById('salario-hora').addEventListener('input', actualizarTabla);
         
-        // Cerrar modales al hacer clic fuera
+        document.getElementById('toggle-sound').addEventListener('click', function() {
+            // Simplemente mostrar mensaje
+            mostrarMensaje('🔊 Sonidos ' + (Math.random() > 0.5 ? 'activados' : 'desactivados'), 'success');
+        });
+        
+        // NUEVO: Activar FCM
+        document.getElementById('activar-fcm').addEventListener('click', activarFirebaseCloudMessaging);
+        
+        // NUEVO: Probar notificación
+        document.getElementById('probar-notificacion').addEventListener('click', () => {
+            enviarNotificacionFCM(
+                '📱 NOTIFICACIÓN DE PRUEBA',
+                'Si ves esto, las notificaciones funcionan correctamente',
+                'test',
+                [
+                    { action: 'abrir', title: '✅ OK' }
+                ]
+            );
+        });
+        
         window.addEventListener('click', (event) => {
             if (event.target.classList.contains('modal')) {
                 event.target.classList.remove('active');
-                if (event.target.id === 'password-modal') {
-                    document.getElementById('password-error').style.display = 'none';
-                }
+                if (event.target.id === 'password-modal') document.getElementById('password-error').style.display = 'none';
             }
         });
         
-        // Cerrar con ESC
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
-                document.querySelectorAll('.modal.active').forEach(modal => {
-                    modal.classList.remove('active');
-                });
+                document.querySelectorAll('.modal.active').forEach(modal => modal.classList.remove('active'));
                 document.getElementById('password-error').style.display = 'none';
             }
         });
         
-        // Optimización para dispositivos táctiles
         document.addEventListener('touchstart', function() {}, {passive: true});
     </script>
 </body>
