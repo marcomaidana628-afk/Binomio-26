@@ -1,10 +1,7 @@
 // firebase-messaging-sw.js
-// Service Worker para Firebase Cloud Messaging - VERSIÓN CORREGIDA
-
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js');
 
-// Configuración Firebase (LA MISMA que en tu index.html)
 const firebaseConfig = {
     apiKey: "AIzaSyDREED85Ig_NLyLEMzLtjRLwrYPZn1Em0g",
     authDomain: "registro-binomio.firebaseapp.com",
@@ -15,11 +12,12 @@ const firebaseConfig = {
     measurementId: "G-TRYZPKQG0J"
 };
 
-// Inicializar Firebase
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
+
 const messaging = firebase.messaging();
 
-// Manejar notificaciones en segundo plano
 messaging.onBackgroundMessage((payload) => {
     console.log('📱 Notificación en segundo plano:', payload);
     
@@ -30,7 +28,7 @@ messaging.onBackgroundMessage((payload) => {
         badge: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Ccircle cx=\'12\' cy=\'12\' r=\'10\' fill=\'%23FF9800\'/%3E%3C/svg%3E',
         vibrate: [200, 100, 200],
         data: payload.data,
-        actions: payload.data?.actions ? JSON.parse(payload.data.actions) : [
+        actions: [
             {
                 action: 'abrir',
                 title: '📝 ABRIR'
@@ -41,26 +39,21 @@ messaging.onBackgroundMessage((payload) => {
     return self.registration.showNotification(notificationTitle, notificationOptions);
 });
 
-// Manejar clic en la notificación
 self.addEventListener('notificationclick', (event) => {
     console.log('🔔 Clic en notificación:', event);
-    
     event.notification.close();
     
     if (event.action === 'abrir' || !event.action) {
         event.waitUntil(
-            clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-                if (clientList.length > 0) {
-                    let client = clientList[0];
-                    for (let i = 0; i < clientList.length; i++) {
-                        if (clientList[i].focused) {
-                            client = clientList[i];
+            clients.matchAll({ type: 'window', includeUncontrolled: true })
+                .then((clientList) => {
+                    for (const client of clientList) {
+                        if (client.url.includes('/Binomio-26/') && 'focus' in client) {
+                            return client.focus();
                         }
                     }
-                    return client.focus();
-                }
-                return clients.openWindow('/');
-            })
+                    return clients.openWindow('/Binomio-26/');
+                })
         );
     }
 });
