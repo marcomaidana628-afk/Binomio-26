@@ -1,5 +1,5 @@
 // firebase-messaging-sw.js
-// Service Worker para Firebase Cloud Messaging
+// Service Worker para Firebase Cloud Messaging - VERSIÓN CORREGIDA
 
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js');
 importScripts('https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js');
