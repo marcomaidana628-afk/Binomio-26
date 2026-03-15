@@ -1577,94 +1577,103 @@
         // ============================================
         // FUNCIONES DE FIREBASE CLOUD MESSAGING
         // ============================================
+        // ============================================
+// FUNCIÓN PARA ACTIVAR NOTIFICACIONES (CORREGIDA)
+// ============================================
+async function activarFirebaseCloudMessaging() {
+    try {
+        console.log('📱 Solicitando permiso para notificaciones...');
         
-        async function activarFirebaseCloudMessaging() {
-            try {
-                console.log('📱 Solicitando permiso para notificaciones...');
+        // Verificar si el navegador soporta notificaciones
+        if (!('Notification' in window)) {
+            alert('❌ Este navegador no soporta notificaciones');
+            return;
+        }
+        
+        // Solicitar permiso al usuario
+        const permission = await Notification.requestPermission();
+        
+        if (permission === 'granted') {
+            console.log('✅ Permiso concedido');
+            
+            // Registrar el service worker con la ruta correcta para GitHub Pages
+            const swUrl = '/Binomio-26/firebase-messaging-sw.js';
+            const registration = await navigator.serviceWorker.register(swUrl);
+            console.log('✅ Service Worker registrado:', registration);
+            
+            // Obtener token FCM con la clave VAPID correcta
+            const token = await getToken(window.firebaseMessaging, {
+                vapidKey: 'BKj9M74NZ379aA182q', // ← Esta es la clave que generaste
+                serviceWorkerRegistration: registration
+            });
+            
+            if (token) {
+                fcmToken = token;
+                console.log('✅ Token FCM:', fcmToken);
                 
-                // Verificar si el navegador soporta notificaciones
-                if (!('Notification' in window)) {
-                    alert('❌ Este navegador no soporta notificaciones');
-                    return;
+                // Guardar token en localStorage
+                localStorage.setItem('fcm_token', fcmToken);
+                
+                // Mostrar estado
+                document.getElementById('fcm-status').style.display = 'block';
+                document.getElementById('fcm-status-text').textContent = '✅ Notificaciones activadas';
+                
+                // Ocultar botón de activación
+                document.getElementById('activar-fcm').style.display = 'none';
+                
+                mostrarMensaje('✅ Notificaciones activadas correctamente', 'success');
+                
+                // Guardar token en Firestore si hay usuario
+                if (usuarioGoogle) {
+                    await guardarTokenEnFirestore(token);
                 }
                 
-                // Solicitar permiso
-                const permission = await Notification.requestPermission();
-                
-                if (permission === 'granted') {
-                    console.log('✅ Permiso concedido');
+                // Escuchar mensajes en primer plano
+                onMessage(window.firebaseMessaging, (payload) => {
+                    console.log('📩 Notificación recibida:', payload);
                     
-                    // Obtener token FCM
-                    const token = await getToken(window.firebaseMessaging, {
-                        vapidKey: 'BKj9M74NZ379aAl82qmOJrcOEQCh932pOyYaLzwDyf_VgXSWCr5DoNZbahYJqJQf1ypUc5sZhu3aoUQgNbh1hEs'
+                    // Mostrar notificación personalizada
+                    const notification = new Notification(payload.notification?.title || 'Editorial Binomio', {
+                        body: payload.notification?.body || 'Tienes una nueva notificación',
+                        icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23FF9800\'/%3E%3Ctext x=\'50\' y=\'70\' font-size=\'70\' text-anchor=\'middle\' fill=\'white\'%3E📊%3C/text%3E%3C/svg%3E',
+                        badge: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Ccircle cx=\'12\' cy=\'12\' r=\'10\' fill=\'%23FF9800\'/%3E%3C/svg%3E',
+                        vibrate: [200, 100, 200],
+                        tag: payload.data?.tag || 'fcm',
+                        renotify: true,
+                        silent: false,
+                        actions: payload.data?.actions ? JSON.parse(payload.data.actions) : [
+                            {
+                                action: 'abrir',
+                                title: '📝 ABRIR'
+                            }
+                        ]
                     });
                     
-                    if (token) {
-                        fcmToken = token;
-                        console.log('✅ Token FCM:', token);
-                        
-                        // Guardar token en localStorage
-                        localStorage.setItem('fcm_token', token);
-                        
-                        // Mostrar estado
-                        document.getElementById('fcm-status').style.display = 'block';
-                        document.getElementById('fcm-status-text').textContent = '✅ Notificaciones activadas';
-                        
-                        // Ocultar botón de activación
-                        document.getElementById('activar-fcm').style.display = 'none';
-                        
-                        mostrarMensaje('✅ Notificaciones activadas correctamente', 'success');
-                        
-                        // Enviar token al servidor (si hay usuario autenticado)
-                        if (usuarioGoogle) {
-                            await guardarTokenEnFirestore(token);
+                    notification.onclick = (event) => {
+                        if (event.action === 'abrir') {
+                            window.focus();
                         }
-                        
-                        // Escuchar mensajes en primer plano
-                        onMessage(window.firebaseMessaging, (payload) => {
-                            console.log('📩 Notificación recibida:', payload);
-                            
-                            // Mostrar notificación personalizada
-                            const notification = new Notification(payload.notification?.title || 'Editorial Binomio', {
-                                body: payload.notification?.body || 'Tienes una nueva notificación',
-                                icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23FF9800\'/%3E%3Ctext x=\'50\' y=\'70\' font-size=\'70\' text-anchor=\'middle\' fill=\'white\'%3E📊%3C/text%3E%3C/svg%3E',
-                                badge: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Ccircle cx=\'12\' cy=\'12\' r=\'10\' fill=\'%23FF9800\'/%3E%3C/svg%3E',
-                                vibrate: [200, 100, 200],
-                                tag: payload.data?.tag || 'fcm',
-                                renotify: true,
-                                silent: false,
-                                actions: payload.data?.actions ? JSON.parse(payload.data.actions) : [
-                                    {
-                                        action: 'abrir',
-                                        title: '📝 ABRIR'
-                                    }
-                                ]
-                            });
-                            
-                            notification.onclick = (event) => {
-                                if (event.action === 'abrir') {
-                                    window.focus();
-                                }
-                                notification.close();
-                            };
-                        });
-                        
-                        // Configurar recordatorios automáticos
-                        configurarRecordatoriosAutomaticos();
-                        
-                    } else {
-                        console.error('❌ No se pudo obtener el token');
-                        mostrarMensaje('❌ Error al obtener token de notificaciones', 'error');
-                    }
-                } else {
-                    console.warn('⚠️ Permiso denegado');
-                    mostrarMensaje('❌ Permiso denegado para notificaciones', 'error');
-                }
-            } catch (error) {
-                console.error('Error en FCM:', error);
-                mostrarMensaje('❌ Error: ' + error.message, 'error');
+                        notification.close();
+                    };
+                });
+                
+                // Configurar recordatorios automáticos
+                configurarRecordatoriosAutomaticos();
+                
+            } else {
+                console.error('❌ No se pudo obtener el token');
+                mostrarMensaje('❌ Error al obtener token', 'error');
             }
+        } else {
+            console.warn('⚠️ Permiso denegado');
+            mostrarMensaje('❌ Permiso denegado para notificaciones', 'error');
         }
+    } catch (error) {
+        console.error('Error en FCM:', error);
+        mostrarMensaje('❌ Error: ' + error.message, 'error');
+    }
+                           }
+        
         
         async function guardarTokenEnFirestore(token) {
             try {
