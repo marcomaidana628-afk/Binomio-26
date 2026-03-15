@@ -9,14 +9,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
-    <!-- Firebase SDK completo (incluye FCM) -->
+    <!-- Firebase SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-messaging.js";
         
-        // Configuración Firebase (activa - reemplazar con credenciales propias en producción)
         const firebaseConfig = {
             apiKey: "AIzaSyDREED85Ig_NLyLEMzLtjRLwrYPZn1Em0g",
             authDomain: "registro-binomio.firebaseapp.com",
@@ -32,7 +31,6 @@
         const db = getFirestore(app);
         const messaging = getMessaging(app);
         
-        // Exponer globalmente
         window.firebaseAuth = auth;
         window.firebaseDb = db;
         window.firebaseMessaging = messaging;
@@ -257,18 +255,21 @@
             color: white;
         }
         
-        /* BOTÓN ESPECIAL PARA FCM */
-        .btn-fcm {
-            background: linear-gradient(135deg, #075E54 0%, #128C7E 100%);
-            color: white;
-            border: 2px solid rgba(37, 211, 102, 0.5);
-            animation: pulse 2s infinite;
+        /* Estado de notificaciones (automático) */
+        .notificacion-status {
+            text-align: center;
+            padding: 8px 16px;
+            margin-top: 10px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            background: rgba(37, 211, 102, 0.1);
+            border: 1px solid #25D366;
+            color: #25D366;
+            display: none;
         }
         
-        @keyframes pulse {
-            0% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.7); }
-            70% { box-shadow: 0 0 0 10px rgba(37, 211, 102, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(37, 211, 102, 0); }
+        .notificacion-status.activo {
+            display: block;
         }
         
         .actions {
@@ -701,12 +702,6 @@
             }
         }
         
-        @media (hover: none) {
-            .btn:hover, .modal-btn:hover, .dev-btn:hover {
-                transform: none;
-            }
-        }
-        
         .notification-container {
             position: fixed;
             top: 20px;
@@ -840,17 +835,6 @@
             font-size: 0.7rem;
             font-weight: 700;
             margin-left: 8px;
-        }
-        
-        @keyframes bounceIn {
-            0% { transform: translateX(120%) scale(0.8); opacity: 0; }
-            50% { transform: translateX(-10px) scale(1.05); opacity: 0.9; }
-            80% { transform: translateX(5px) scale(0.98); }
-            100% { transform: translateX(0) scale(1); opacity: 1; }
-        }
-        
-        .duo-notification.special {
-            animation: bounceIn 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
         
         .contador-registro {
@@ -1291,20 +1275,15 @@
                         <button class="btn btn-sonido" id="toggle-sound" style="background: linear-gradient(135deg, #FF6B6B 0%, #FF4949 100%);">
                             <i class="fas fa-volume-up"></i> Sonidos
                         </button>
-                        <!-- NUEVO BOTÓN FCM -->
-                        <button class="btn btn-fcm" id="activar-fcm">
-                            <i class="fas fa-bell"></i> ACTIVAR NOTIFICACIONES
-                        </button>
                     </div>
                     
                     <div id="cloud-status" class="cloud-status cloud-disconnected">
                         <i class="fas fa-cloud"></i> <span id="cloud-status-text">Desconectado</span>
                     </div>
                     
-                    <!-- ESTADO DE NOTIFICACIONES -->
-                    <div id="fcm-status" style="display: none; text-align: center; padding: 10px; border-radius: 8px; background: rgba(37, 211, 102, 0.1); border: 1px solid #25D366;">
-                        <i class="fas fa-check-circle" style="color: #25D366;"></i>
-                        <span id="fcm-status-text" style="color: #25D366; font-weight: bold;">Notificaciones activadas</span>
+                    <!-- Estado automático de notificaciones -->
+                    <div id="notificacion-status" class="notificacion-status">
+                        <i class="fas fa-bell"></i> Notificaciones activadas
                     </div>
                 </div>
             </div>
@@ -1323,8 +1302,7 @@
                     <h4 style="color: var(--color-warning); margin-bottom: 10px; font-size: 1.1rem;">
                         <i class="fas fa-edit"></i> EDITOR DE MEJORAS
                     </h4>
-                    <textarea id="dev-code" placeholder="// Escribe aquí las mejoras en JavaScript...
-// Ejemplo: function nuevaFuncion() { console.log('Mejora implementada'); }"></textarea>
+                    <textarea id="dev-code" placeholder="// Escribe aquí las mejoras en JavaScript..."></textarea>
                 </div>
                 
                 <div class="dev-actions">
@@ -1363,17 +1341,13 @@
                 
                 <div class="actions">
                     <button class="btn btn-exportar" id="exportar-sistema">
-                        <i class="fas fa-file-export"></i> Exportar JSON
+                        <i class="fas fa-file-export"></i> EXPORTAR JSON
                     </button>
                     <button class="btn btn-importar" id="importar-sistema">
-                        <i class="fas fa-file-import"></i> Importar JSON
+                        <i class="fas fa-file-import"></i> IMPORTAR JSON
                     </button>
                     <button class="btn btn-limpiar-mes" id="limpiar-mes-actual">
-                        <i class="fas fa-trash-alt"></i> Limpiar mes actual
-                    </button>
-                    <!-- BOTÓN DE PRUEBA DE NOTIFICACIÓN -->
-                    <button class="btn btn-info" id="probar-notificacion" style="background: linear-gradient(135deg, #25D366, #128C7E);">
-                        <i class="fas fa-bell"></i> PROBAR NOTIFICACIÓN
+                        <i class="fas fa-trash-alt"></i> LIMPIAR MES ACTUAL
                     </button>
                 </div>
                 
@@ -1437,8 +1411,8 @@
             <p>Sistema de Registro de Turnos - Editorial Binomio</p>
             <p style="margin-top: 10px; font-size: 0.85rem; color: var(--color-text-muted);">
                 <i class="fas fa-user-tie"></i> Desarrollado por: Marco Maidana | 
-                <i class="fas fa-cloud"></i> Almacenamiento en la nube: Firebase |
-                <i class="fas fa-bell"></i> Notificaciones FCM
+                <i class="fas fa-cloud"></i> Firebase | 
+                <i class="fas fa-bell"></i> Notificaciones automáticas
             </p>
         </footer>
     </div>
@@ -1482,7 +1456,7 @@
 
     <script>
         // ============================================
-        // SISTEMA PRINCIPAL CON FIREBASE CLOUD MESSAGING
+        // SISTEMA PRINCIPAL - VERSIÓN FINAL CORREGIDA
         // ============================================
         
         let usuarios = [];
@@ -1575,125 +1549,83 @@
         }
         
         // ============================================
-        // FUNCIONES DE FIREBASE CLOUD MESSAGING
+        // FUNCIONES DE FIREBASE CLOUD MESSAGING (AUTOMÁTICAS)
         // ============================================
-        // ============================================
-// FUNCIÓN PARA ACTIVAR NOTIFICACIONES (CORREGIDA)
-// ============================================
-async function activarFirebaseCloudMessaging() {
-    try {
-        console.log('📱 Solicitando permiso para notificaciones...');
         
-        // Verificar si el navegador soporta notificaciones
-        if (!('Notification' in window)) {
-            alert('❌ Este navegador no soporta notificaciones');
-            return;
-        }
-        
-        // Solicitar permiso al usuario
-        const permission = await Notification.requestPermission();
-        
-        if (permission === 'granted') {
-            console.log('✅ Permiso concedido');
-            
-            // Registrar el service worker con la ruta correcta para GitHub Pages
-            const swUrl = '/Binomio-26/firebase-messaging-sw.js';
-            const registration = await navigator.serviceWorker.register(swUrl);
-            console.log('✅ Service Worker registrado:', registration);
-            
-            // Obtener token FCM con la clave VAPID correcta
-            const token = await getToken(window.firebaseMessaging, {
-                vapidKey: 'BKj9M74NZ379aA182q', // ← Esta es la clave que generaste
-                serviceWorkerRegistration: registration
-            });
-            
-            if (token) {
-                fcmToken = token;
-                console.log('✅ Token FCM:', fcmToken);
+        async function inicializarFCM() {
+            try {
+                console.log('📱 Inicializando notificaciones automáticas...');
                 
-                // Guardar token en localStorage
-                localStorage.setItem('fcm_token', fcmToken);
-                
-                // Mostrar estado
-                document.getElementById('fcm-status').style.display = 'block';
-                document.getElementById('fcm-status-text').textContent = '✅ Notificaciones activadas';
-                
-                // Ocultar botón de activación
-                document.getElementById('activar-fcm').style.display = 'none';
-                
-                mostrarMensaje('✅ Notificaciones activadas correctamente', 'success');
-                
-                // Guardar token en Firestore si hay usuario
-                if (usuarioGoogle) {
-                    await guardarTokenEnFirestore(token);
+                if (!('Notification' in window)) {
+                    console.log('❌ Navegador no soporta notificaciones');
+                    return;
                 }
                 
-                // Escuchar mensajes en primer plano
-                onMessage(window.firebaseMessaging, (payload) => {
-                    console.log('📩 Notificación recibida:', payload);
+                // Registrar service worker al cargar la página
+                if ('serviceWorker' in navigator) {
+                    const swUrl = '/Binomio-26/firebase-messaging-sw.js';
+                    const registration = await navigator.serviceWorker.register(swUrl);
+                    console.log('✅ Service Worker registrado:', registration);
                     
-                    // Mostrar notificación personalizada
-                    const notification = new Notification(payload.notification?.title || 'Editorial Binomio', {
-                        body: payload.notification?.body || 'Tienes una nueva notificación',
-                        icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23FF9800\'/%3E%3Ctext x=\'50\' y=\'70\' font-size=\'70\' text-anchor=\'middle\' fill=\'white\'%3E📊%3C/text%3E%3C/svg%3E',
-                        badge: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Ccircle cx=\'12\' cy=\'12\' r=\'10\' fill=\'%23FF9800\'/%3E%3C/svg%3E',
-                        vibrate: [200, 100, 200],
-                        tag: payload.data?.tag || 'fcm',
-                        renotify: true,
-                        silent: false,
-                        actions: payload.data?.actions ? JSON.parse(payload.data.actions) : [
-                            {
-                                action: 'abrir',
-                                title: '📝 ABRIR'
-                            }
-                        ]
-                    });
+                    // Solicitar permiso automáticamente
+                    const permission = await Notification.requestPermission();
                     
-                    notification.onclick = (event) => {
-                        if (event.action === 'abrir') {
-                            window.focus();
+                    if (permission === 'granted') {
+                        console.log('✅ Permiso concedido automáticamente');
+                        
+                        // Obtener token FCM
+                        const token = await getToken(window.firebaseMessaging, {
+                            vapidKey: 'BKj9M74NZ379aA182q',
+                            serviceWorkerRegistration: registration
+                        });
+                        
+                        if (token) {
+                            fcmToken = token;
+                            console.log('✅ Token FCM:', token);
+                            localStorage.setItem('fcm_token', token);
+                            
+                            // Mostrar estado
+                            document.getElementById('notificacion-status').classList.add('activo');
+                            
+                            // Configurar recordatorios automáticos
+                            configurarRecordatoriosAutomaticos();
+                            
+                            // Escuchar mensajes en primer plano
+                            onMessage(window.firebaseMessaging, (payload) => {
+                                console.log('📩 Notificación recibida:', payload);
+                                mostrarNotificacionNavegador(
+                                    payload.notification?.title || 'Editorial Binomio',
+                                    payload.notification?.body || 'Tienes una nueva notificación'
+                                );
+                            });
                         }
-                        notification.close();
-                    };
-                });
-                
-                // Configurar recordatorios automáticos
-                configurarRecordatoriosAutomaticos();
-                
-            } else {
-                console.error('❌ No se pudo obtener el token');
-                mostrarMensaje('❌ Error al obtener token', 'error');
-            }
-        } else {
-            console.warn('⚠️ Permiso denegado');
-            mostrarMensaje('❌ Permiso denegado para notificaciones', 'error');
-        }
-    } catch (error) {
-        console.error('Error en FCM:', error);
-        mostrarMensaje('❌ Error: ' + error.message, 'error');
-    }
-                           }
-        
-        
-        async function guardarTokenEnFirestore(token) {
-            try {
-                const tokenRef = firebaseDoc(window.firebaseDb, 'fcm_tokens', usuarioGoogle.uid);
-                await firebaseSetDoc(tokenRef, {
-                    token: token,
-                    usuario: usuarioActual,
-                    email: usuarioGoogle.email,
-                    fecha: serverTimestamp(),
-                    dispositivo: navigator.userAgent
-                });
-                console.log('✅ Token guardado en Firestore');
+                    }
+                }
             } catch (error) {
-                console.error('Error guardando token:', error);
+                console.log('⏳ Notificaciones no disponibles (normal en primera carga):', error);
+            }
+        }
+        
+        function mostrarNotificacionNavegador(titulo, mensaje) {
+            try {
+                const notification = new Notification(titulo, {
+                    body: mensaje,
+                    icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23FF9800\'/%3E%3Ctext x=\'50\' y=\'70\' font-size=\'70\' text-anchor=\'middle\' fill=\'white\'%3E📊%3C/text%3E%3C/svg%3E',
+                    vibrate: [200, 100, 200]
+                });
+                
+                notification.onclick = () => window.focus();
+                
+                setTimeout(() => notification.close(), 5000);
+            } catch (error) {
+                console.log('Error mostrando notificación:', error);
             }
         }
         
         function configurarRecordatoriosAutomaticos() {
             console.log('⏰ Configurando recordatorios automáticos...');
             
+            // Verificar cada minuto
             setInterval(() => {
                 const ahora = new Date();
                 const hora = ahora.getHours();
@@ -1703,138 +1635,57 @@ async function activarFirebaseCloudMessaging() {
                 // No enviar fines de semana
                 if (diaSemana === 0 || diaSemana === 6) return;
                 
+                const hoy = ahora.toISOString().split('T')[0];
+                const registrosHoy = registros.filter(r => r.usuario === usuarioActual && r.fecha === hoy);
+                
                 // Recordatorio entrada mañana (9:30 AM)
                 if (hora === 9 && minutos === 30) {
-                    if (!verificarRegistroHoy('Mañana', 'Entrada')) {
-                        enviarNotificacionFCM(
+                    const tieneEntradaManana = registrosHoy.some(r => r.turno === 'Mañana' && r.entrada);
+                    if (!tieneEntradaManana) {
+                        mostrarNotificacionNavegador(
                             '🌅 BUENOS DÍAS',
-                            '¿Ya registraste tu entrada? El búho te espera',
-                            'recordatorio-entrada'
+                            '¿Ya registraste tu entrada? El equipo te espera'
                         );
                     }
                 }
                 
                 // Recordatorio salida mañana (1:00 PM)
                 if (hora === 13 && minutos === 0) {
-                    if (verificarRegistroHoy('Mañana', 'Entrada') && !verificarRegistroHoy('Mañana', 'Salida')) {
-                        enviarNotificacionFCM(
+                    const tieneEntradaManana = registrosHoy.some(r => r.turno === 'Mañana' && r.entrada);
+                    const tieneSalidaManana = registrosHoy.some(r => r.turno === 'Mañana' && r.salida);
+                    
+                    if (tieneEntradaManana && !tieneSalidaManana) {
+                        mostrarNotificacionNavegador(
                             '🍽️ HORA DE ALMUERZO',
-                            'No olvides registrar tu salida antes de almorzar',
-                            'recordatorio-salida-manana'
+                            'No olvides registrar tu salida antes de almorzar'
                         );
                     }
                 }
                 
                 // Recordatorio entrada tarde (2:30 PM)
                 if (hora === 14 && minutos === 30) {
-                    if (!verificarRegistroHoy('Tarde', 'Entrada')) {
-                        enviarNotificacionFCM(
+                    const tieneEntradaTarde = registrosHoy.some(r => r.turno === 'Tarde' && r.entrada);
+                    if (!tieneEntradaTarde) {
+                        mostrarNotificacionNavegador(
                             '☀️ BUENAS TARDES',
-                            'La tarde ya comenzó. Registra tu entrada',
-                            'recordatorio-entrada-tarde'
+                            'La tarde ya comenzó. Registra tu entrada'
                         );
                     }
                 }
                 
                 // Recordatorio salida tarde (7:00 PM)
                 if (hora === 19 && minutos === 0) {
-                    if (verificarRegistroHoy('Tarde', 'Entrada') && !verificarRegistroHoy('Tarde', 'Salida')) {
-                        enviarNotificacionFCM(
+                    const tieneEntradaTarde = registrosHoy.some(r => r.turno === 'Tarde' && r.entrada);
+                    const tieneSalidaTarde = registrosHoy.some(r => r.turno === 'Tarde' && r.salida);
+                    
+                    if (tieneEntradaTarde && !tieneSalidaTarde) {
+                        mostrarNotificacionNavegador(
                             '🌙 FIN DE JORNADA',
-                            'Registra tu salida antes de irte a casa',
-                            'recordatorio-salida-tarde'
+                            'Registra tu salida antes de irte a casa'
                         );
                     }
                 }
-                
-                // Recordatorio fin de mes (últimos 3 días)
-                const ultimoDia = new Date(ahora.getFullYear(), ahora.getMonth() + 1, 0).getDate();
-                const diasRestantes = ultimoDia - ahora.getDate();
-                
-                if (diasRestantes >= 0 && diasRestantes <= 3 && hora === 10 && minutos === 0) {
-                    const mesActual = meses[ahora.getMonth()];
-                    enviarNotificacionFCM(
-                        diasRestantes === 0 ? '🚨 ÚLTIMO DÍA DEL MES' : '📆 FIN DE MES PRÓXIMO',
-                        diasRestantes === 0 
-                            ? `Hoy termina ${mesActual}. Exporta tus registros`
-                            : `Quedan ${diasRestantes} días para que termine ${mesActual}`,
-                        'recordatorio-fin-mes',
-                        [
-                            {
-                                action: 'exportar',
-                                title: '📤 EXPORTAR'
-                            }
-                        ]
-                    );
-                }
-            }, 60000); // Revisar cada minuto
-        }
-        
-        function verificarRegistroHoy(turno, tipo) {
-            const hoy = new Date().toISOString().split('T')[0];
-            return registros.some(r => 
-                r.usuario === usuarioActual &&
-                r.fecha === hoy &&
-                r.turno === turno &&
-                (tipo === 'Entrada' ? r.entrada : r.salida)
-            );
-        }
-        
-        function enviarNotificacionFCM(titulo, mensaje, tag, acciones = []) {
-            if (!fcmToken) {
-                console.log('📱 FCM no activado, usando notificación web normal');
-                mostrarNotificacionWeb(titulo, mensaje, tag, acciones);
-                return;
-            }
-            
-            try {
-                const notification = new Notification(titulo, {
-                    body: mensaje,
-                    icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23FF9800\'/%3E%3Ctext x=\'50\' y=\'70\' font-size=\'70\' text-anchor=\'middle\' fill=\'white\'%3E📊%3C/text%3E%3C/svg%3E',
-                    badge: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 24 24\'%3E%3Ccircle cx=\'12\' cy=\'12\' r=\'10\' fill=\'%23FF9800\'/%3E%3C/svg%3E',
-                    vibrate: [200, 100, 200],
-                    tag: tag,
-                    renotify: true,
-                    silent: false,
-                    actions: acciones.length ? acciones : [
-                        {
-                            action: 'abrir',
-                            title: '📝 ABRIR'
-                        }
-                    ]
-                });
-                
-                notification.onclick = (event) => {
-                    if (event.action === 'exportar') {
-                        exportarSistema();
-                    } else if (event.action === 'abrir') {
-                        window.focus();
-                    }
-                    notification.close();
-                };
-                
-                console.log('✅ Notificación enviada:', titulo);
-            } catch (error) {
-                console.error('Error enviando notificación:', error);
-            }
-        }
-        
-        function mostrarNotificacionWeb(titulo, mensaje, tag, acciones = []) {
-            // Notificación web normal (fallback)
-            try {
-                const notification = new Notification(titulo, {
-                    body: mensaje,
-                    icon: 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'%3E%3Ccircle cx=\'50\' cy=\'50\' r=\'45\' fill=\'%23FF9800\'/%3E%3Ctext x=\'50\' y=\'70\' font-size=\'70\' text-anchor=\'middle\' fill=\'white\'%3E📊%3C/text%3E%3C/svg%3E',
-                    tag: tag
-                });
-                
-                notification.onclick = () => {
-                    window.focus();
-                    notification.close();
-                };
-            } catch (error) {
-                console.log('No se pudo mostrar notificación');
-            }
+            }, 60000);
         }
         
         // ============================================
@@ -1857,11 +1708,6 @@ async function activarFirebaseCloudMessaging() {
                 document.getElementById('logout-google').style.display = 'flex';
                 
                 await cargarDatosDesdeLaNube();
-                
-                // Guardar token FCM si existe
-                if (fcmToken) {
-                    await guardarTokenEnFirestore(fcmToken);
-                }
             } catch (error) {
                 console.error('Error al iniciar sesión:', error);
                 mostrarMensaje('❌ Error al iniciar sesión con Google', 'error');
@@ -1976,15 +1822,6 @@ async function activarFirebaseCloudMessaging() {
             usuarios = cargarDesdeLocalStorage('usuarios', ['MARCO MAIDANA', 'JUAN PÉREZ', 'MARÍA GARCÍA']);
             registros = cargarDesdeLocalStorage('registros', []);
             usuarioActual = cargarDesdeLocalStorage('usuarioActual', null);
-            
-            // Recuperar token FCM guardado
-            const tokenGuardado = localStorage.getItem('fcm_token');
-            if (tokenGuardado) {
-                fcmToken = tokenGuardado;
-                document.getElementById('fcm-status').style.display = 'block';
-                document.getElementById('fcm-status-text').textContent = '✅ Notificaciones activadas';
-                document.getElementById('activar-fcm').style.display = 'none';
-            }
         }
         
         function mostrarModalUsuario() {
@@ -2149,7 +1986,6 @@ async function activarFirebaseCloudMessaging() {
                 
                 actualizarTabla();
                 enviarWhatsApp(turno, tipo, fecha, hora);
-                guardarRegistroEnCarpetaLocal(turno, tipo, fecha, hora);
                 
                 // Notificación de confirmación
                 let titulo, mensaje;
@@ -2167,8 +2003,7 @@ async function activarFirebaseCloudMessaging() {
                     mensaje = "Salida registrada. ¡Descansa y recarga energías!";
                 }
                 
-                enviarNotificacionFCM(titulo, mensaje, `registro-${turno}-${tipo}`);
-                
+                mostrarNotificacionNavegador(titulo, mensaje);
                 mostrarMensaje(`${tipo} ${turno} registrado correctamente`, 'success');
             } else {
                 mostrarMensaje('Error al guardar el registro', 'error');
@@ -2178,17 +2013,13 @@ async function activarFirebaseCloudMessaging() {
         function registrarTurnoConValidacion(turno, tipo) {
             console.log(`🔄 Intentando registrar: ${tipo} ${turno}`);
             
-            if (window.contadorRegistro && window.contadorRegistro.isActive()) {
-                return;
-            }
-            
             if (!usuarioActual) {
                 mostrarMensaje('Primero debes seleccionar un usuario', 'error');
                 mostrarModalUsuario();
                 return;
             }
             
-            const { hora, diaSemana } = obtenerFechaHora();
+            const { diaSemana } = obtenerFechaHora();
             
             if (diaSemana === 'Domingo') {
                 if (!confirm('🙏 ¡Es Domingo! ¿Estás seguro de registrar turno?')) {
@@ -2196,21 +2027,7 @@ async function activarFirebaseCloudMessaging() {
                 }
             }
             
-            if (window.contadorRegistro) {
-                window.contadorRegistro.iniciar(
-                    turno, 
-                    tipo, 
-                    (turnoConfirmado, tipoConfirmado) => {
-                        console.log(`✅ Confirmado: ${tipoConfirmado} ${turnoConfirmado}`);
-                        ejecutarRegistro(turnoConfirmado, tipoConfirmado);
-                    },
-                    () => {
-                        console.log('❌ Registro cancelado');
-                    }
-                );
-            } else {
-                ejecutarRegistro(turno, tipo);
-            }
+            ejecutarRegistro(turno, tipo);
         }
         
         function enviarWhatsApp(turno, tipo, fecha, hora) {
@@ -2226,59 +2043,6 @@ async function activarFirebaseCloudMessaging() {
             const url = `https://wa.me/${numero}?text=${mensajeCodificado}`;
             
             window.open(url, '_blank');
-        }
-        
-        async function guardarRegistroEnCarpetaLocal(turno, tipo, fecha, hora) {
-            try {
-                const año = fecha.split('-')[0];
-                const mes = fecha.split('-')[1];
-                const nombreMes = meses[parseInt(mes) - 1];
-                const usuarioFolder = usuarioActual.replace(/[^a-zA-Z0-9]/g, '_');
-                
-                const registroTexto = `========================================
-EDITORIAL BINOMIO - REGISTRO DE TURNO
-========================================
-Usuario: ${usuarioActual}
-Fecha: ${fecha}
-Hora: ${hora}
-Turno: ${turno}
-Tipo: ${tipo}
-----------------------------------------
-Generado: ${new Date().toLocaleString()}
-========================================\n\n`;
-                
-                const nombreArchivo = `${fecha}_${turno}_${tipo}.txt`;
-                
-                if ('showDirectoryPicker' in window) {
-                    try {
-                        const dirHandle = await window.showDirectoryPicker({
-                            id: 'editorial-binomio-auto',
-                            mode: 'readwrite',
-                            startIn: 'downloads'
-                        });
-                        
-                        let binomioDir = await dirHandle.getDirectoryHandle('EDITORIAL_BINOMIO', { create: true });
-                        let usuarioDir = await binomioDir.getDirectoryHandle(usuarioFolder, { create: true });
-                        let añoDir = await usuarioDir.getDirectoryHandle(año, { create: true });
-                        let mesDir = await añoDir.getDirectoryHandle(`${mes}_${nombreMes}`, { create: true });
-                        
-                        const fileHandle = await mesDir.getFileHandle(nombreArchivo, { create: true });
-                        const writable = await fileHandle.createWritable();
-                        await writable.write(registroTexto);
-                        await writable.close();
-                        
-                        console.log('✅ Registro guardado automáticamente en carpeta local');
-                        return true;
-                    } catch (permError) {
-                        console.warn('Permiso no concedido para guardado automático:', permError);
-                        return false;
-                    }
-                }
-                return false;
-            } catch (error) {
-                console.error('Error al guardar en carpeta local:', error);
-                return false;
-            }
         }
         
         async function limpiarRegistrosMesActual() {
@@ -2731,133 +2495,6 @@ Generado: ${new Date().toLocaleString()}
         }
         
         // ============================================
-        // CLASE CONTADOR REGISTRO
-        // ============================================
-        
-        class ContadorRegistro {
-            constructor() {
-                this.activo = false;
-                this.tiempoRestante = 5;
-                this.turnoPendiente = null;
-                this.tipoPendiente = null;
-                this.intervalo = null;
-                this.elemento = null;
-                this.onCompletado = null;
-                this.onCancelado = null;
-                this.init();
-            }
-            
-            init() {
-                this.elemento = document.createElement('div');
-                this.elemento.className = 'contador-registro';
-                this.elemento.innerHTML = `
-                    <div class="contador-header">
-                        <div class="contador-icono" id="contador-icono">⏰</div>
-                        <div class="contador-titulo" id="contador-titulo">REGISTRANDO</div>
-                    </div>
-                    <div class="contador-info">
-                        <div class="contador-turno" id="contador-turno"></div>
-                        <div class="contador-fecha" id="contador-fecha"></div>
-                    </div>
-                    <div class="contador-numero" id="contador-numero">5</div>
-                    <div class="contador-barra">
-                        <div class="contador-progreso" id="contador-progreso" style="width: 100%;"></div>
-                    </div>
-                    <div class="contador-botones">
-                        <button class="contador-btn cancelar" id="contador-cancelar">✗ CANCELAR</button>
-                        <button class="contador-btn confirmar" id="contador-confirmar">✓ CONFIRMAR</button>
-                    </div>
-                    <div class="contador-ayuda">⏎ ESPACIO • ESC</div>
-                `;
-                
-                document.body.appendChild(this.elemento);
-                
-                document.getElementById('contador-cancelar').addEventListener('click', () => this.cancelar());
-                document.getElementById('contador-confirmar').addEventListener('click', () => this.confirmar());
-            }
-            
-            iniciar(turno, tipo, onCompletado, onCancelado) {
-                if (this.activo) this.cancelar();
-                
-                this.activo = true;
-                this.tiempoRestante = 5;
-                this.turnoPendiente = turno;
-                this.tipoPendiente = tipo;
-                this.onCompletado = onCompletado;
-                this.onCancelado = onCancelado;
-                
-                this.elemento.style.visibility = 'visible';
-                this.elemento.style.opacity = '1';
-                this.elemento.style.transform = 'translate(-50%, -50%) scale(1)';
-                
-                this.intervalo = setInterval(() => {
-                    this.tiempoRestante--;
-                    document.getElementById('contador-numero').textContent = this.tiempoRestante;
-                    document.getElementById('contador-progreso').style.width = `${(this.tiempoRestante/5)*100}%`;
-                    
-                    if (this.tiempoRestante <= 0) this.confirmar();
-                }, 1000);
-            }
-            
-            confirmar() {
-                clearInterval(this.intervalo);
-                this.elemento.style.opacity = '0';
-                this.elemento.style.transform = 'translate(-50%, -50%) scale(0.9)';
-                setTimeout(() => this.elemento.style.visibility = 'hidden', 400);
-                if (this.onCompletado) this.onCompletado(this.turnoPendiente, this.tipoPendiente);
-                this.activo = false;
-            }
-            
-            cancelar() {
-                clearInterval(this.intervalo);
-                this.elemento.style.opacity = '0';
-                this.elemento.style.transform = 'translate(-50%, -50%) scale(0.9)';
-                setTimeout(() => this.elemento.style.visibility = 'hidden', 400);
-                if (this.onCancelado) this.onCancelado();
-                this.activo = false;
-            }
-            
-            isActive() { return this.activo; }
-        }
-        
-        // ============================================
-        // CLASE FESTIVIDADES
-        // ============================================
-        
-        class EditorialBinomioFestividades {
-            constructor() {
-                this.festividades = [
-                    { nombre: "Año Nuevo", mes: 0, dia: 1 },
-                    { nombre: "Día del Mar", mes: 2, dia: 23 },
-                    { nombre: "Día del Trabajo", mes: 4, dia: 1 },
-                    { nombre: "Año Nuevo Andino", mes: 5, dia: 21 },
-                    { nombre: "San Juan", mes: 5, dia: 24 },
-                    { nombre: "Día de la Independencia", mes: 7, dia: 6 },
-                    { nombre: "Urkupiña", mes: 7, dia: 15 },
-                    { nombre: "Día de los Difuntos", mes: 10, dia: 2 },
-                    { nombre: "Navidad", mes: 11, dia: 25 }
-                ];
-                
-                this.init();
-            }
-            
-            init() {
-                const hoy = new Date();
-                const festividad = this.festividades.find(f => f.mes === hoy.getMonth() && f.dia === hoy.getDate());
-                
-                if (festividad) {
-                    setTimeout(() => {
-                        enviarNotificacionFCM(
-                            `🎉 ${festividad.nombre}`,
-                            'Editorial Binomio celebra contigo',
-                            'festividad'
-                        );
-                    }, 5000);
-                }
-            }
-        }
-        
-        // ============================================
         // INICIALIZACIÓN
         // ============================================
         
@@ -2868,8 +2505,10 @@ Generado: ${new Date().toLocaleString()}
             actualizarHora();
             setInterval(actualizarHora, 1000);
             
-            window.contadorRegistro = new ContadorRegistro();
-            new EditorialBinomioFestividades();
+            // Inicializar notificaciones automáticas
+            setTimeout(() => {
+                inicializarFCM();
+            }, 2000);
             
             onAuthStateChanged(window.firebaseAuth, (user) => {
                 if (user) {
@@ -2883,9 +2522,6 @@ Generado: ${new Date().toLocaleString()}
                             actualizarDisplayUsuario();
                             actualizarTabla();
                         }
-                        
-                        // Guardar token FCM si existe
-                        if (fcmToken) guardarTokenEnFirestore(fcmToken);
                     });
                 } else {
                     usuarioGoogle = null;
@@ -2953,23 +2589,7 @@ Generado: ${new Date().toLocaleString()}
         document.getElementById('salario-hora').addEventListener('input', actualizarTabla);
         
         document.getElementById('toggle-sound').addEventListener('click', function() {
-            // Simplemente mostrar mensaje
             mostrarMensaje('🔊 Sonidos ' + (Math.random() > 0.5 ? 'activados' : 'desactivados'), 'success');
-        });
-        
-        // NUEVO: Activar FCM
-        document.getElementById('activar-fcm').addEventListener('click', activarFirebaseCloudMessaging);
-        
-        // NUEVO: Probar notificación
-        document.getElementById('probar-notificacion').addEventListener('click', () => {
-            enviarNotificacionFCM(
-                '📱 NOTIFICACIÓN DE PRUEBA',
-                'Si ves esto, las notificaciones funcionan correctamente',
-                'test',
-                [
-                    { action: 'abrir', title: '✅ OK' }
-                ]
-            );
         });
         
         window.addEventListener('click', (event) => {
